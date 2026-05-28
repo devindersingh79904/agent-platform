@@ -12,8 +12,8 @@ import {
   type Edge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { GitBranch, Play, Plus, RefreshCcw, Save, Wrench } from 'lucide-react';
-import { createRun, getAgents, getWorkflowGraph, updateWorkflowGraph } from '../api/client';
+import { GitBranch, Pencil, Play, Plus, RefreshCcw, Save, Wrench } from 'lucide-react';
+import { createRun, getAgents, getWorkflowGraph, updateWorkflowGraph, updateWorkflow } from '../api/client';
 import ToolConfigForm from '../components/ToolConfigForm';
 import { APP_ROUTES } from '../constants/appRoutes';
 import { UI_MESSAGES } from '../constants/messages';
@@ -79,6 +79,9 @@ export default function WorkflowBuilder() {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workflowLoaded, setWorkflowLoaded] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [isSavingMeta, setIsSavingMeta] = useState(false);
 
   const loadWorkflow = useCallback(async () => {
     if (!workflowId) {
@@ -94,7 +97,7 @@ export default function WorkflowBuilder() {
     try {
       const data = await getWorkflowGraph(workflowId);
       setWorkflow(data.workflow);
-      setNodes(data.nodes.map((n: any) => ({
+      const mappedNodes = data.nodes.map((n: any) => ({
         id: n.id,
         type: flowTypeForNode(n.node_type),
         position: n.position || { x: 0, y: 0 },
@@ -102,7 +105,21 @@ export default function WorkflowBuilder() {
           label: n.node_type === WORKFLOW_NODE_TYPES.TOOL ? `Tool: ${n.tool_name || TOOL_NAMES.DUCKDUCKGO_SEARCH}` : n.agent_id || n.node_type,
           ...n
         }
-      })));
+      }));
+      // Seed a START node for new/empty workflows so the user has a starting point
+      if (mappedNodes.length === 0) {
+        mappedNodes.push({
+          id: `start-${Date.now()}`,
+          type: flowTypeForNode(WORKFLOW_NODE_TYPES.START),
+          position: { x: 250, y: 150 },
+          data: {
+            node_type: WORKFLOW_NODE_TYPES.START,
+            config_json: "{}",
+            label: WORKFLOW_NODE_TYPES.START,
+          },
+        });
+      }
+      setNodes(mappedNodes);
       setEdges(data.edges.map((e: any) => ({
         id: e.id,
         source: e.source_node_id,
@@ -127,6 +144,23 @@ export default function WorkflowBuilder() {
   useEffect(() => {
     loadWorkflow();
   }, [loadWorkflow]);
+
+  const handleSaveMeta = async () => {
+    if (!workflowId || !editedName.trim()) return;
+    setIsSavingMeta(true);
+    try {
+      await updateWorkflow(workflowId, {
+        name: editedName.trim(),
+        description: workflow?.description || null,
+      });
+      setWorkflow((prev: any) => ({ ...prev, name: editedName.trim() }));
+      setIsEditingName(false);
+    } catch {
+      alert('Failed to save workflow name.');
+    } finally {
+      setIsSavingMeta(false);
+    }
+  };
 
   useEffect(() => {
     getAgents().then(setAgents).catch(() => setAgents([]));
@@ -392,9 +426,43 @@ export default function WorkflowBuilder() {
     <div className="h-full flex flex-col space-y-4">
       <div className="flex justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Workflow Builder: {isLoading ? "Loading..." : workflow?.name || "Untitled workflow"}
-          </h1>
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={editedName}
+                onChange={e => setEditedName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setIsEditingName(false); }}
+                className="text-2xl font-bold border-b-2 border-indigo-500 focus:outline-none bg-transparent text-slate-900"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveMeta}
+                disabled={isSavingMeta}
+                className="text-sm text-indigo-600 font-medium hover:text-indigo-800 disabled:opacity-50"
+              >
+                {isSavingMeta ? 'Saving...' : 'Save'}
+              </button>
+              <button onClick={() => setIsEditingName(false)} className="text-sm text-slate-500 hover:text-slate-700">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <h1
+              className="text-3xl font-bold text-slate-900 cursor-pointer hover:text-indigo-700 transition-colors group flex items-center gap-2"
+              title="Click to rename"
+              onClick={() => {
+                if (workflow && !isLoading) {
+                  setEditedName(workflow.name || '');
+                  setIsEditingName(true);
+                }
+              }}
+            >
+              Workflow Builder: {isLoading ? 'Loading...' : workflow?.name || 'Untitled workflow'}
+              {!isLoading && workflow && (
+                <Pencil size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />
+              )}
+            </h1>
+          )}
           {error && (
             <div className="mt-2 flex items-center gap-3 text-sm text-rose-700">
               <span>{error}</span>
@@ -461,9 +529,19 @@ export default function WorkflowBuilder() {
           <div className="absolute inset-0 z-10 bg-white flex items-center justify-center">
             <div className="text-center space-y-3">
               <div className="text-rose-700 font-medium">{error}</div>
-              <button onClick={loadWorkflow} className="px-4 py-2 bg-rose-600 text-white rounded-lg">
-                {UI_LABELS.RETRY}
-              </button>
+              {workflowId && (
+                <button onClick={loadWorkflow} className="px-4 py-2 bg-rose-600 text-white rounded-lg">
+                  {UI_LABELS.RETRY}
+                </button>
+              )}
+              <div>
+                <button
+                  onClick={() => navigate(APP_ROUTES.WORKFLOWS)}
+                  className="text-sm text-indigo-600 underline hover:text-indigo-800"
+                >
+                  ← Back to Workflows list
+                </button>
+              </div>
             </div>
           </div>
         )}

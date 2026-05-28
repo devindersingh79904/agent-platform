@@ -53,13 +53,20 @@ def create_workflow_run(workflow_id: str, run: WorkflowRunCreate, request: Reque
 @router.get("")
 def get_runs(
     request: Request,
+    workflow_id: str = Query(None),
+    status: str = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    query = db.query(WorkflowRun).order_by(WorkflowRun.started_at.desc())
-    total = db.query(WorkflowRun).count()
-    runs = query.offset((page - 1) * size).limit(size).all()
+    query = db.query(WorkflowRun)
+    if workflow_id:
+        query = query.filter(WorkflowRun.workflow_id == workflow_id)
+    if status:
+        query = query.filter(WorkflowRun.status == status)
+    
+    total = query.count()
+    runs = query.order_by(WorkflowRun.started_at.desc()).offset((page - 1) * size).limit(size).all()
     return paginated_response(request, ResponseMessage.RUNS_FETCHED, runs, page, size, total)
 
 @router.get("/{run_id}")

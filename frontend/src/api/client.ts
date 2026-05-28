@@ -46,6 +46,8 @@ export const deleteAgent = async (id: string) => unwrap<any>(await api.delete(AP
 
 export const getWorkflows = async (page = 1, size = 20) => unwrapContent<any>(await api.get(API_ROUTES.WORKFLOWS, { params: { page, size } }));
 export const createWorkflow = async (data: any) => unwrap<any>(await api.post(API_ROUTES.WORKFLOWS, data));
+export const updateWorkflow = async (id: string, data: any) => unwrap<any>(await api.put(API_ROUTES.WORKFLOW_BY_ID(id), data));
+export const deleteWorkflow = async (id: string) => unwrap<any>(await api.delete(API_ROUTES.WORKFLOW_BY_ID(id)));
 export const getWorkflowGraph = async (id: string) => unwrap<any>(await api.get(API_ROUTES.WORKFLOW_GRAPH(id)));
 export const updateWorkflowGraph = async (id: string, data: any) => unwrap<any>(await api.put(API_ROUTES.WORKFLOW_GRAPH(id), data));
 
@@ -53,6 +55,17 @@ export const getTemplates = async () => unwrapContent<any>(await api.get(API_ROU
 export const createWorkflowFromTemplate = async (templateId: string) => unwrap<any>(await api.post(API_ROUTES.TEMPLATE_CREATE_WORKFLOW(templateId)));
 
 export const getRuns = async (page = 1, size = 20) => unwrapContent<any>(await api.get(API_ROUTES.RUNS, { params: { page, size } }));
+export const getRunsPaginated = async (
+  page = 1,
+  size = 20,
+  filters?: { workflowId?: string; status?: string }
+) => {
+  const params: any = { page, size };
+  if (filters?.workflowId) params.workflow_id = filters.workflowId;
+  if (filters?.status) params.status = filters.status;
+  const response = await api.get(API_ROUTES.RUNS, { params });
+  return unwrap<any>(response);
+};
 export const getConfig = async () => unwrap<any>(await api.get(API_ROUTES.CONFIG));
 export const createRun = async (
   workflowId: string,
