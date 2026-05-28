@@ -12,7 +12,7 @@ from app.models.models import WorkflowRun, WorkflowNode, WorkflowEdge, Agent, Ag
 from app.core.logger import get_logger
 from app.runtime.llm_client import get_llm_client
 from app.websocket.run_monitor import manager
-from app.tools.tool_registry import TOOL_REGISTRY, get_openai_tool_schemas
+from app.tools.tool_registry import TOOL_REGISTRY, get_openai_tool_schemas, resolve_tool_alias
 from app.core.messages import ErrorMessage
 from app.core.exceptions import RunCancelledException
 
@@ -254,18 +254,19 @@ class RuntimeService:
             "estimated_cost": f"{response.estimated_cost:.8f}",
             "model": response.model,
         }
-        db.add(
-            TokenUsage(
-                run_id=run_id,
-                agent_id=agent_id,
-                model=response.model,
-                prompt_tokens=usage["prompt_tokens"],
-                completion_tokens=usage["completion_tokens"],
-                total_tokens=usage["total_tokens"],
-                estimated_cost=usage["estimated_cost"],
-            )
+        tu = TokenUsage(
+            run_id=run_id,
+            agent_id=agent_id,
+            model=response.model,
+            prompt_tokens=usage["prompt_tokens"],
+            completion_tokens=usage["completion_tokens"],
+            total_tokens=usage["total_tokens"],
+            estimated_cost=usage["estimated_cost"],
         )
+        db.add(tu)
         db.commit()
+        db.refresh(tu)
+        usage["id"] = tu.id
         await RuntimeService.emit_event(
             run_id,
             WebSocketEventType.TOKEN_USAGE_RECORDED.value,
@@ -401,24 +402,32 @@ class RuntimeService:
                 await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, message=f"Max cost exceeded: {current_cost} > {max_cost}", db=db)
                 raise Exception("GUARDRAIL_VIOLATION: Max cost exceeded")
 
-            node_run = NodeRun(
-                workflow_run_id=run_id,
-                workflow_id=workflow_id,
-                node_id=node.id,
-                node_type=node.node_type,
-                agent_id=agent.id if agent else None,
-                tool_name=node.tool_name,
-                status=RunStatus.RUNNING.value,
-                input_json=json.dumps(state.get("input", {})),
-                retry_count=0
-            )
-            db.add(node_run)
-            db.commit()
-            db.refresh(node_run)
+            # Idempotency Lookup
+            node_run = db.query(NodeRun).filter(NodeRun.workflow_run_id == run_id, NodeRun.node_id == node.id).first()
+            if not node_run:
+                node_run = NodeRun(
+                    workflow_run_id=run_id,
+                    workflow_id=workflow_id,
+                    node_id=node.id,
+                    node_type=node.node_type,
+                    agent_id=agent.id if agent else None,
+                    tool_name=node.tool_name,
+                    status=RunStatus.RUNNING.value,
+                    input_json=json.dumps(state.get("input", {})),
+                    retry_count=0
+                )
+                db.add(node_run)
+                db.commit()
+                db.refresh(node_run)
+            else:
+                node_run.status = RunStatus.RUNNING.value
+                db.commit()
+                db.refresh(node_run)
+
+            # Exactly one NODE_STARTED event
+            await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_STARTED.value, node_id=node.id, agent_id=agent.id if agent else None, message=f"Starting node {node.id}", db=db)
 
             async def execute_inner():
-                await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_STARTED.value, node_id=node.id, agent_id=agent.id if agent else None, message=f"Starting node {node.id}", db=db)
-
                 if node.node_type == NodeType.START.value:
                     input_val = state["input"]
                     if isinstance(input_val, dict):
@@ -445,7 +454,6 @@ class RuntimeService:
                         input_str = str(input_val)
                     state["current_output"] = input_str
                     node_run.output_json = json.dumps({"output": input_str})
-                    await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_COMPLETED.value, node_id=node.id, message="START node completed", db=db)
                     return
 
                 if node.node_type == NodeType.TOOL.value:
@@ -492,13 +500,10 @@ class RuntimeService:
                     else:
                         await RuntimeService.emit_event(run_id, WebSocketEventType.RUN_LOG.value, message=f"Tool {tool_name} not found in registry", db=db)
 
-                    await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_COMPLETED.value, node_id=node.id, agent_id=agent.id if agent else None,
-                                                   message=f"Completed node {node.id}", db=db)
                     return
 
                 if node.node_type == NodeType.CONDITION.value:
                     await RuntimeService.emit_event(run_id, WebSocketEventType.CONDITION_EVALUATED.value, node_id=node.id, message=f"Evaluated condition", db=db)
-                    await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_COMPLETED.value, node_id=node.id, message="CONDITION node completed", db=db)
                     return
 
                 if node.node_type == NodeType.END.value:
@@ -506,7 +511,6 @@ class RuntimeService:
                     state["final_output"] = final_output
                     state.setdefault("node_outputs", {})[node.id] = final_output
                     node_run.output_json = json.dumps({"final_output": final_output})
-                    await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_COMPLETED.value, node_id=node.id, agent_id=None, message="End node completed", payload={"final_output": final_output}, db=db)
                     return
 
                 if node.node_type == NodeType.AGENT.value and agent:
@@ -647,23 +651,73 @@ class RuntimeService:
                                 db=db,
                             )
 
-                            if requested_tool_call.name not in configured_tool_names:
-                                await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, agent_id=agent.id, message=f"LLM requested unconfigured tool: {requested_tool_call.name}", db=db)
-                                raise Exception(f"GUARDRAIL_VIOLATION: Tool not configured: {requested_tool_call.name}")
+                            raw_tool_name = requested_tool_call.name
+                            canonical_tool_name = resolve_tool_alias(raw_tool_name)
 
-                            if allowed_tools is not None and requested_tool_call.name not in allowed_tools:
-                                await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, agent_id=agent.id, message=f"Unauthorized tool requested: {requested_tool_call.name}", db=db)
-                                raise Exception(f"GUARDRAIL_VIOLATION: Unauthorized tool requested: {requested_tool_call.name}")
+                            resolved_configured = [resolve_tool_alias(t) for t in configured_tool_names]
+                            resolved_allowed = [resolve_tool_alias(t) for t in allowed_tools] if allowed_tools is not None else None
 
-                            blocked_keyword = RuntimeService.contains_blocked_keyword(requested_tool_call.arguments, blocked_tool_keywords)
-                            if blocked_keyword:
-                                await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, agent_id=agent.id, message=f"Tool arguments contain blocked keyword: {blocked_keyword}", db=db)
-                                raise Exception(f"GUARDRAIL_VIOLATION: Tool arguments contain blocked keyword: {blocked_keyword}")
+                            guardrail_error = None
+                            if canonical_tool_name not in resolved_configured:
+                                guardrail_error = f"Tool not configured: {raw_tool_name}"
+                            elif resolved_allowed is not None and canonical_tool_name not in resolved_allowed:
+                                guardrail_error = f"Unauthorized tool requested: {raw_tool_name}"
+                            else:
+                                blocked_keyword = RuntimeService.contains_blocked_keyword(requested_tool_call.arguments, blocked_tool_keywords)
+                                if blocked_keyword:
+                                    guardrail_error = f"Tool arguments contain blocked keyword: {blocked_keyword}"
+                                elif state["tool_call_count"] >= max_tool_calls:
+                                    guardrail_error = f"Max tool calls exceeded: {state['tool_call_count']} >= {max_tool_calls}"
 
-                            if state["tool_call_count"] >= max_tool_calls:
-                                await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, agent_id=agent.id, message=f"Max tool calls exceeded: {state['tool_call_count']} >= {max_tool_calls}", db=db)
-                                raise Exception("GUARDRAIL_VIOLATION: Max tool calls exceeded")
+                            if guardrail_error:
+                                # Create failing/blocked ToolCall record
+                                tool_call_payload = {
+                                    "tool_name": canonical_tool_name,
+                                    "requested_tool_name": raw_tool_name,
+                                    "arguments": requested_tool_call.arguments,
+                                    "source": "LLM_TOOL_CALL"
+                                }
+                                tool_call_record = ToolCall(
+                                    run_id=run_id,
+                                    agent_id=agent.id if agent else None,
+                                    tool_name=canonical_tool_name,
+                                    input_json=json.dumps(tool_call_payload),
+                                    status="FAILED",
+                                    started_at=datetime.utcnow(),
+                                    completed_at=datetime.utcnow(),
+                                    error_message=f"GUARDRAIL_VIOLATION: {guardrail_error}"
+                                )
+                                db.add(tool_call_record)
+                                db.commit()
 
+                                # Emit failures
+                                await RuntimeService.emit_event(
+                                    run_id,
+                                    WebSocketEventType.TOOL_CALL_FAILED.value,
+                                    node_id=node.id,
+                                    agent_id=agent.id if agent else None,
+                                    message=f"Tool call blocked by guardrail: {guardrail_error}",
+                                    payload={
+                                        "tool_name": canonical_tool_name,
+                                        "requested_tool_name": raw_tool_name,
+                                        "input_json": requested_tool_call.arguments,
+                                        "error": f"GUARDRAIL_VIOLATION: {guardrail_error}",
+                                        "status": "BLOCKED",
+                                        "source": "LLM_TOOL_CALL"
+                                    },
+                                    db=db
+                                )
+                                await RuntimeService.emit_event(
+                                    run_id,
+                                    WebSocketEventType.GUARDRAIL_VIOLATION.value,
+                                    node_id=node.id,
+                                    agent_id=agent.id if agent else None,
+                                    message=f"GUARDRAIL_VIOLATION: {guardrail_error}",
+                                    db=db
+                                )
+                                raise Exception(f"GUARDRAIL_VIOLATION: {guardrail_error}")
+
+                            requested_tool_call.name = canonical_tool_name
                             tool_result = await RuntimeService.execute_llm_tool_call(db, run_id, node, agent, requested_tool_call, state)
                             conversation.append(RuntimeService.tool_result_message(requested_tool_call, tool_result))
 
@@ -730,34 +784,56 @@ class RuntimeService:
 
                     await RuntimeService.emit_event(run_id, WebSocketEventType.RUN_LOG.value, message=f"Final node execution state - review_passed: {state.get('review_passed')}, reviewer_calls: {state.get('reviewer_calls')}", db=db)
 
-                    await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_COMPLETED.value, node_id=node.id, agent_id=agent.id, message=f"Completed node {node.id}", db=db)
-
+            success = False
+            error_msg = None
             for attempt in range(max_retries + 1):
                 try:
                     node_run.retry_count = attempt
                     db.commit()
                     await asyncio.wait_for(execute_inner(), timeout=timeout_sec)
-                    node_run.status = RunStatus.COMPLETED.value
-                    node_run.completed_at = datetime.utcnow()
-                    db.commit()
+                    success = True
                     break
                 except asyncio.TimeoutError:
+                    error_msg = "Timeout exceeded"
                     if attempt == max_retries:
-                        node_run.status = RunStatus.FAILED.value
-                        node_run.error_message = "Timeout exceeded"
-                        node_run.completed_at = datetime.utcnow()
-                        db.commit()
-                        await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_FAILED.value, node_id=node.id, agent_id=agent.id if agent else None, message="Timeout exceeded", db=db)
-                        raise Exception("Timeout exceeded for node")
+                        break
                 except Exception as e:
+                    error_msg = str(e)
                     if attempt == max_retries:
-                        node_run.status = RunStatus.FAILED.value
-                        node_run.error_message = str(e)
-                        node_run.completed_at = datetime.utcnow()
-                        db.commit()
-                        await RuntimeService.emit_event(run_id, WebSocketEventType.NODE_FAILED.value, node_id=node.id, agent_id=agent.id if agent else None, message=str(e), db=db)
-                        raise
-                        
+                        break
+
+            if success:
+                node_run.status = RunStatus.COMPLETED.value
+                node_run.completed_at = datetime.utcnow()
+                db.commit()
+                
+                payload = {}
+                if node.node_type == NodeType.END.value:
+                    payload["final_output"] = state.get("final_output", "")
+                await RuntimeService.emit_event(
+                    run_id, 
+                    WebSocketEventType.NODE_COMPLETED.value, 
+                    node_id=node.id, 
+                    agent_id=agent.id if agent else None, 
+                    message=f"Completed node {node.id}", 
+                    payload=payload,
+                    db=db
+                )
+            else:
+                node_run.status = RunStatus.FAILED.value
+                node_run.error_message = error_msg
+                node_run.completed_at = datetime.utcnow()
+                db.commit()
+                await RuntimeService.emit_event(
+                    run_id, 
+                    WebSocketEventType.NODE_FAILED.value, 
+                    node_id=node.id, 
+                    agent_id=agent.id if agent else None, 
+                    message=error_msg or "Node execution failed", 
+                    db=db
+                )
+                raise Exception(error_msg or "Node execution failed")
+                
             return state
 
         return node_executor

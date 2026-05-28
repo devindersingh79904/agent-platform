@@ -9,7 +9,7 @@ services:
     volumes:
       - ./backend:/app
       - ./frontend:/frontend:ro
-      - yuno_sqlite_data:/app/data
+      - ai_agent_sqlite_data:/app/data
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
@@ -30,7 +30,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
-      - yuno_sqlite_data:/app/data
+      - ai_agent_sqlite_data:/app/data
     depends_on:
       - backend
     command: python -m app.channels.telegram_worker
@@ -45,11 +45,11 @@ services:
       - .env
     volumes:
       - ./backend:/app
-      - yuno_sqlite_data:/app/data
+      - ai_agent_sqlite_data:/app/data
     depends_on:
       - backend
     command: python -m app.scheduler.scheduler_worker
     restart: "always"
 
 volumes:
-  yuno_sqlite_data:
+  ai_agent_sqlite_data:

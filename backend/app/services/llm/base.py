@@ -91,3 +91,6 @@ class LLMProvider:
                 "model": response.model,
             },
         }
+
+    async def close(self):
+        pass

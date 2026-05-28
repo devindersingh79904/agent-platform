@@ -23,7 +23,7 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-slate-900 text-white h-screen flex flex-col fixed left-0 top-0">
       <div className="p-4 text-xl font-bold border-b border-slate-800">
-        Yuno Agent Studio
+        {import.meta.env.VITE_APP_NAME || "Devinder AI Agent Studio"}
       </div>
       <nav className="flex-1 p-4 space-y-2">
         {links.map((link) => (

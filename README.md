@@ -1,10 +1,10 @@
-# Yuno Agent Studio
+# Devinder AI Agent Studio
 
-Yuno Agent Studio is a local-first AI Agent Orchestration Platform where users can create configurable agents, connect them into LangGraph workflows, run them, monitor execution, and interact through Telegram.
+Devinder AI Agent Studio is a local-first AI Agent Orchestration Platform where users can create configurable agents, connect them into LangGraph workflows, run them, monitor execution, and interact through Telegram.
 
 ## Project Overview
 
-Yuno Agent Studio is a local-first AI Agent Orchestration Platform where users can create configurable agents, connect them into LangGraph workflows, run them, monitor execution, and interact through Telegram.
+Devinder AI Agent Studio is a local-first AI Agent Orchestration Platform where users can create configurable agents, connect them into LangGraph workflows, run them, monitor execution, and interact through Telegram.
 
 ## Requirement Mapping Table
 
@@ -88,10 +88,13 @@ cp .env.example .env
 **Security / Advanced Variables:**
 - `API_AUTH_ENABLED=true`: Enable global API Key authentication (recommended for production).
 - `API_KEY=your_secret_key`: The required API key when `API_AUTH_ENABLED` is true. Include it in requests via the `X-API-Key` header. Frontend client will send this automatically if set.
+- `APP_NAME`: Configures the FastAPI app title (defaults to "Devinder AI Agent Studio").
+- `VITE_APP_NAME`: Configures the frontend sidebar header and browser tab title (defaults to "Devinder AI Agent Studio").
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins (defaults securely to `http://localhost:3000`).
 
 ## LLM Modes
 
-Yuno Agent Studio supports two LLM modes.
+Devinder AI Agent Studio supports two LLM modes.
 
 ### 1. MockLLM mode, default
 
@@ -409,6 +412,32 @@ See `docs/final-verification-proof.md` for the command-by-command proof report.
 | Token/cost tracking | TokenUsage persisted and displayed |
 | Tests | pytest critical path tests |
 
+## Key Architecture Policies & Features
+
+### 1. Metadata APIs
+To avoid frontend hardcoding of options, the backend exposes dynamic metadata endpoints:
+- `GET /api/metadata/models`: Lists provider-supported models (such as `gpt-4o-mini` and `mock-llm`).
+- `GET /api/metadata/tools`: Lists canonical tools directly from the backend tool registry.
+- `GET /api/metadata/channels`: Verifies credentials status for channels like Telegram bot connection.
+
+### 2. Tool Aliasing Policy
+The agent studio maps legacy or shorthand names to canonical names using the tool alias resolver. For example:
+- `draft_generator` and `draft_generator_tool` resolve to `draft_response_tool`.
+- `web_search` and `search` resolve to `duckduckgo_search_tool`.
+OpenAI function schemas are generated using canonical names, and guardrail validations check against canonical resolved names to prevent false unauthorized failures. Both the requested name and canonical name are persisted.
+
+### 3. Blocked Tool-Call Persistence
+If the guardrail blocks an LLM tool request:
+- A database record is saved in the `tool_calls` table with a status of `FAILED`.
+- The `error_message` records the guardrail violation reason.
+- `TOOL_CALL_FAILED` and `GUARDRAIL_VIOLATION` events are broadcasted, showing the blocked request immediately on the Run Monitor timeline.
+
+### 4. RunMonitor Layout Behavior
+The Run Monitor layout is designed to keep all execution panels fully visible:
+- **Responsive Layout**: Adapts gracefully to small viewports.
+- **Scrollable Cards**: Messages, Tool Calls, and Logs panels have independent vertical scrolling via `max-h-[450px]` and `overflow-y-auto`.
+- **Wide Scrollable Tables**: Tables (Timeline, Token Usage) use horizontal scrollbars (`overflow-x-auto`) to prevent layout clipping.
+
 ## Final Verdict
 
-Yuno Agent Studio is ready as a local-first containerized demo platform with configurable agents, visual workflows, live monitoring, persistent history, and optional Telegram integration.
+Devinder AI Agent Studio is ready as a local-first containerized platform with configurable agents, visual workflows, live monitoring, persistent history, and optional Telegram integration.

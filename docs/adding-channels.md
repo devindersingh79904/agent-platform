@@ -1,6 +1,6 @@
 # Adding New Messaging Channels
 
-Yuno Agent Studio supports running workflows via external chat integrations (like Telegram, Slack, or WhatsApp). This guide explains how to add new channels using the pattern established by the Telegram integration.
+Devinder AI Agent Studio supports running workflows via external chat integrations (like Telegram, Slack, or WhatsApp). This guide explains how to add new channels using the pattern established by the Telegram integration.
 
 ## Channel Architecture
 

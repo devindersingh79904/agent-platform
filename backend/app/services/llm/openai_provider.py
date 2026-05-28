@@ -71,3 +71,7 @@ class OpenAIProvider(LLMProvider):
             model=selected_model,
             tool_calls=tool_calls,
         )
+
+    async def close(self):
+        if hasattr(self, "client") and self.client:
+            await self.client.close()

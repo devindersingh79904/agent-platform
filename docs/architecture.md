@@ -1,6 +1,6 @@
 # Architecture & Technology Choices
 
-This document details the high-level architecture design of **Yuno Agent Studio**.
+This document details the high-level architecture design of **Devinder AI Agent Studio**.
 
 ## Architecture Flow
 

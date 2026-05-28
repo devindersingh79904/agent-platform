@@ -60,6 +60,8 @@ clean:
 	rm -rf backend/.venv
 
 package: clean
-	rm -f ../yuno-agent-studio-final.zip
-	cd .. && zip -r yuno-agent-studio-final.zip yuno-agent-studio \
-		-x "*/.git/*" "*/.pytest_cache/*" "*/venv/*" "*/.venv/*" "*/node_modules/*" "*/__pycache__/*" "*.pyc" "*.db" "*/dist/*" "*/.env" "*/__MACOSX/*" "*/.DS_Store"
+	rm -f ../ai-agent-studio-final.zip
+	cd .. && ln -sf yuno-agent-studio ai-agent-studio && \
+		zip -r ai-agent-studio-final.zip ai-agent-studio \
+		-x "*/.git/*" "*/.pytest_cache/*" "*/venv/*" "*/.venv/*" "*/node_modules/*" "*/__pycache__/*" "*.pyc" "*.db" "*/dist/*" "*/.env" "*/__MACOSX/*" "*/.DS_Store" && \
+		rm -f ai-agent-studio

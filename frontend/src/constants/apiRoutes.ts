@@ -25,6 +25,9 @@ export const API_ROUTES = {
   SCHEDULE_BY_ID: (scheduleId: string) => `/schedules/${scheduleId}`,
   SCHEDULE_TRIGGER: (scheduleId: string) => `/schedules/${scheduleId}/trigger`,
   CHANNEL_MESSAGES: "/channel-messages",
+  METADATA_MODELS: "/metadata/models",
+  METADATA_TOOLS: "/metadata/tools",
+  METADATA_CHANNELS: "/metadata/channels",
   WS_RUN: (runId: string, correlationId: string, lastEventId?: number) => {
     const base = `/ws/runs/${runId}?correlation_id=${encodeURIComponent(correlationId)}`;
     return lastEventId ? `${base}&last_event_id=${lastEventId}` : base;

@@ -26,7 +26,7 @@ from app.models import Base
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url with our environment variable if set
-db_url = os.getenv("DATABASE_URL", "sqlite:///./yuno_agent_studio.db")
+db_url = os.getenv("DATABASE_URL", "sqlite:///./ai_agent_studio.db")
 config.set_main_option("sqlalchemy.url", db_url)
 
 # other values from the config, defined by the needs of env.py,

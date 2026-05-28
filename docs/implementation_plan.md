@@ -1,6 +1,6 @@
-# Yuno Agent Studio - Implementation Plan
+# Devinder AI Agent Studio - Implementation Plan
 
-This document outlines the end-to-end plan to implement the Yuno Agent Studio local-first AI Agent Orchestration Platform based on the provided HLD and LLD, and the latest user requirements.
+This document outlines the end-to-end plan to implement the Devinder AI Agent Studio local-first AI Agent Orchestration Platform based on the provided HLD and LLD, and the latest user requirements.
 
 ## Goal
 Build a working end-to-end platform for creating, configuring, executing, and monitoring collaborative AI agents in a LangGraph-based workflow, complete with a React Flow visual builder, local SQLite persistence, and Telegram integration.
@@ -53,7 +53,7 @@ USE_MOCK_LLM=true
 MOCK_LLM_DELAY_MS=800
 TELEGRAM_BOT_TOKEN=
 DEFAULT_TELEGRAM_WORKFLOW_ID=
-DATABASE_URL=sqlite:///./yuno_agent_studio.db
+DATABASE_URL=sqlite:///./ai_agent_studio.db
 ```
 
 ## API Contract

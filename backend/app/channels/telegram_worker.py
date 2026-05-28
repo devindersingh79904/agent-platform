@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 structured_logger = get_logger(__name__)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I am Yuno Agent Studio Bot. Send me a message to trigger a workflow.")
+    await update.message.reply_text("Hello! I am Devinder AI Agent Studio Bot. Send me a message to trigger a workflow.")
 
 async def process_telegram_update(update_payload: dict, db: Session, chat_id: str, message_text: str):
     workflow_id = os.getenv("DEFAULT_TELEGRAM_WORKFLOW_ID")

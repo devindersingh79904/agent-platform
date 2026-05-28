@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./yuno_agent_studio.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ai_agent_studio.db")
 
 if DATABASE_URL.startswith("sqlite:///"):
     db_path = DATABASE_URL.replace("sqlite:///", "")

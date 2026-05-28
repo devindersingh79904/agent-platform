@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.db.session import engine, Base
-from app.api import agents, templates, workflows, runs, config, enums, schedules, channel_messages
+from app.api import agents, templates, workflows, runs, config, enums, schedules, channel_messages, metadata
 from app.core.api_paths import API_PREFIX, ApiPath
 from enum import Enum
 
@@ -33,13 +33,17 @@ try:
 finally:
     db.close()
 
-app = FastAPI(title="Yuno Agent Studio API")
+app = FastAPI(title=os.getenv("APP_NAME", "Devinder AI Agent Studio") + " API")
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(APIAuthMiddleware)
 
-cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
+cors_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+if cors_origins_raw == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +59,7 @@ app.include_router(workflows.router, prefix=f"{API_PREFIX}{ApiPath.WORKFLOWS}", 
 app.include_router(templates.router, prefix=f"{API_PREFIX}{ApiPath.TEMPLATES}", tags=["Templates"])
 app.include_router(runs.router, prefix=f"{API_PREFIX}{ApiPath.RUNS}", tags=["Runs"])
 app.include_router(config.router, prefix=f"{API_PREFIX}{ApiPath.CONFIG}", tags=["Config"])
+app.include_router(metadata.router, prefix=f"{API_PREFIX}/metadata", tags=["Metadata"])
 app.include_router(enums.router, prefix=f"{API_PREFIX}{ApiPath.ENUMS}", tags=["Enums"])
 app.include_router(schedules.router, prefix=f"{API_PREFIX}{ExtraApiPath.SCHEDULES.value}", tags=["Schedules"])
 app.include_router(channel_messages.router, prefix=f"{API_PREFIX}/channel-messages", tags=["Channel Messages"])
@@ -128,9 +133,16 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+
+@app.on_event("shutdown")
+async def shutdown():
+    from app.services.llm.provider_factory import close_llm_provider
+    await close_llm_provider()
+
+
 @app.get("/")
 def root_check(request: Request):
-    return success_response(request, ResponseMessage.HEALTH_CHECK_SUCCESS, {"status": "ok", "app": "Yuno Agent Studio"})
+    return success_response(request, ResponseMessage.HEALTH_CHECK_SUCCESS, {"status": "ok", "app": os.getenv("APP_NAME", "Devinder AI Agent Studio")})
 
 @app.get("/health")
 def health_check(request: Request):

@@ -8,5 +8,6 @@ export const APP_ROUTES = {
   RUN_MONITOR: (runId: string) => `/runs/${runId}`,
   SCHEDULES: "/schedules",
   MEMORY: "/memory",
-  CHANNELS: "/channels"
+  CHANNELS: "/channels",
+  CHANNEL_MESSAGES: "/channels/messages"
 } as const;

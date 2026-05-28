@@ -1,6 +1,6 @@
 # Final Target Demo Script
 
-Follow these steps to demonstrate the end-to-end execution of Yuno Agent Studio:
+Follow these steps to demonstrate the end-to-end execution of Devinder AI Agent Studio:
 
 1. **Reset Database**:
    ```bash

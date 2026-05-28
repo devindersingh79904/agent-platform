@@ -58,3 +58,11 @@ The repository also includes a real search tool implementation:
 DuckDuckGo search failures are persisted as `ToolCall` errors and the runtime will continue to show the failure state in the Run Monitor.
 
 Tests should monkeypatch `TOOL_REGISTRY["duckduckgo_search_tool"]` with a deterministic fake instead of calling the real network-backed DuckDuckGo implementation. OpenAI tool-calling tests monkeypatch `AsyncOpenAI` or the runtime LLM client so no external network is required.
+
+## Tool Aliasing Policy
+
+To maintain backward compatibility and handle model quirks, `backend/app/tools/tool_registry.py` defines `TOOL_ALIASES`. If a model requests a legacy name, it is mapped to a canonical tool:
+- `draft_generator` and `draft_generator_tool` are mapped to `draft_response_tool`.
+- `web_search` and `search` are mapped to `duckduckgo_search_tool`.
+
+When generating OpenAI schemas, only canonical tools are exposed to prevent models from seeing aliased variants. During run execution, if the model responds with an aliased name anyway, the runtime maps it to the canonical tool before checking configured limits or executing the tool, preventing unexpected guardrail blocks. Both the requested name and canonical resolved name are tracked in the execution payload.

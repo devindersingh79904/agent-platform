@@ -2,6 +2,17 @@ from typing import Iterable
 
 from app.tools.core_tools import ALL_TOOLS, TOOL_REGISTRY
 
+TOOL_ALIASES = {
+    "draft_generator": "draft_response_tool",
+    "draft_generator_tool": "draft_response_tool",
+    "web_search": "duckduckgo_search_tool",
+    "search": "duckduckgo_search_tool",
+}
+
+
+def resolve_tool_alias(name: str) -> str:
+    return TOOL_ALIASES.get(name, name)
+
 
 def get_tool_registry():
     return TOOL_REGISTRY
@@ -11,17 +22,18 @@ def get_openai_tool_schemas(tool_names: list[str] | None) -> list[dict]:
     schemas = []
     seen: set[str] = set()
     for tool_name in tool_names or []:
-        if tool_name in seen:
+        canonical_name = resolve_tool_alias(tool_name)
+        if canonical_name in seen:
             continue
-        tool = TOOL_REGISTRY.get(tool_name)
+        tool = TOOL_REGISTRY.get(canonical_name)
         if not tool:
             continue
-        seen.add(tool_name)
+        seen.add(canonical_name)
         schemas.append(
             {
                 "type": "function",
                 "function": {
-                    "name": tool_name,
+                    "name": canonical_name,
                     "description": tool.description,
                     "parameters": tool.input_schema,
                 },

@@ -1,6 +1,6 @@
 # Database Migrations
 
-Yuno Agent Studio uses Alembic for database migrations.
+Devinder AI Agent Studio uses Alembic for database migrations.
 
 ## Naming Convention
 

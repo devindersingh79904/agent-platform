@@ -11,6 +11,7 @@ import TemplatesGallery from './pages/TemplatesGallery';
 import SchedulesManager from './pages/SchedulesManager';
 import MemoryManager from './pages/MemoryManager';
 import ChannelMessages from './pages/ChannelMessages';
+import ChannelSetup from './pages/ChannelSetup';
 import { APP_ROUTES } from './constants/appRoutes';
 
 function App() {
@@ -29,7 +30,8 @@ function App() {
             <Route path={`${APP_ROUTES.RUNS}/:runId`} element={<RunMonitor />} />
             <Route path={APP_ROUTES.SCHEDULES} element={<SchedulesManager />} />
             <Route path={APP_ROUTES.MEMORY} element={<MemoryManager />} />
-            <Route path={APP_ROUTES.CHANNELS} element={<ChannelMessages />} />
+            <Route path={APP_ROUTES.CHANNELS} element={<ChannelSetup />} />
+            <Route path={APP_ROUTES.CHANNEL_MESSAGES} element={<ChannelMessages />} />
           </Routes>
         </main>
       </div>

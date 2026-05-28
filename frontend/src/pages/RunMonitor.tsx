@@ -105,14 +105,26 @@ const RunMonitor = () => {
         } else if (event_type === WS_EVENTS.LLM_TOOL_CALL_REQUESTED || event_type === WS_EVENTS.TOOL_CALL_STARTED || event_type === WS_EVENTS.TOOL_CALL_COMPLETED || event_type === WS_EVENTS.TOOL_CALL_FAILED) {
           setToolCalls(prev => [...prev, data]);
         } else if (event_type === WS_EVENTS.TOKEN_USAGE_RECORDED) {
-          setTokenUsage(prev => [...prev, {
-            agent_id: data.agent_id,
-            model: payload.model,
-            prompt_tokens: payload.prompt_tokens,
-            completion_tokens: payload.completion_tokens,
-            total_tokens: payload.total_tokens,
-            estimated_cost: payload.estimated_cost
-          }]);
+          setTokenUsage(prev => {
+            const usageId = payload.id;
+            const isDuplicate = prev.some(t => {
+              if (usageId && t.id === usageId) return true;
+              return t.agent_id === data.agent_id &&
+                     t.model === payload.model &&
+                     t.total_tokens === payload.total_tokens &&
+                     t.estimated_cost === payload.estimated_cost;
+            });
+            if (isDuplicate) return prev;
+            return [...prev, {
+              id: usageId,
+              agent_id: data.agent_id,
+              model: payload.model,
+              prompt_tokens: payload.prompt_tokens,
+              completion_tokens: payload.completion_tokens,
+              total_tokens: payload.total_tokens,
+              estimated_cost: payload.estimated_cost
+            }];
+          });
         }
       };
     }).catch(err => {
@@ -154,7 +166,7 @@ const RunMonitor = () => {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
           <span>Run Monitor</span>
@@ -220,9 +232,9 @@ const RunMonitor = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Messages Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[450px] overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 p-3 font-semibold flex items-center space-x-2 text-slate-700">
             <MessageSquare size={18} />
             <span>Agent Messages</span>
@@ -245,7 +257,7 @@ const RunMonitor = () => {
         </div>
 
         {/* Tool Calls Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[450px] overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 p-3 font-semibold flex items-center space-x-2 text-slate-700">
             <Wrench size={18} />
             <span>Tool Calls</span>
@@ -270,7 +282,7 @@ const RunMonitor = () => {
         </div>
 
         {/* Live Logs Panel */}
-        <div className="bg-slate-900 rounded-xl shadow-sm flex flex-col overflow-hidden">
+        <div className="bg-slate-900 rounded-xl shadow-sm flex flex-col h-[450px] overflow-hidden">
           <div className="bg-slate-950 border-b border-slate-800 p-3 font-semibold flex items-center space-x-2 text-slate-300">
             <Terminal size={18} />
             <span>Execution Logs</span>
@@ -289,7 +301,7 @@ const RunMonitor = () => {
         </div>
 
         {/* Node Runs Timeline */}
-        <div className="col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-4">
+        <div className="col-span-1 lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-4">
           <div className="bg-slate-50 border-b border-slate-200 p-3 font-semibold flex items-center space-x-2 text-slate-700">
             <Activity size={18} />
             <span>Node Execution Timeline</span>
@@ -319,6 +331,7 @@ const RunMonitor = () => {
           </div>
         </div>
       </div>
+      
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-slate-50 border-b border-slate-200 p-3 font-semibold flex items-center space-x-2 text-slate-700">
           <Coins size={18} />
@@ -327,7 +340,7 @@ const RunMonitor = () => {
         {tokenUsage.length === 0 ? (
           <div className="p-6 text-center text-slate-400">{UI_MESSAGES.NO_TOKEN_USAGE}</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
@@ -362,7 +375,7 @@ const RunMonitor = () => {
             <Activity size={18} />
             <span>Execution Metrics</span>
           </div>
-          <div className="p-4 grid grid-cols-4 gap-4">
+          <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
              <div className="bg-slate-50 border border-slate-100 p-4 rounded-lg">
                 <div className="text-slate-500 text-xs font-semibold mb-1 uppercase tracking-wider">Nodes Run</div>
                 <div className="text-2xl font-bold text-slate-800">{metrics.node_count}</div>
