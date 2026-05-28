@@ -15,6 +15,24 @@ test: setup
 reset-db: setup
 	docker compose run --rm backend python -m app.db.reset_db
 
+migrate: setup
+	docker compose run --rm backend alembic upgrade head
+
+migration: setup
+	docker compose run --rm backend alembic revision --autogenerate -m "$(name)"
+
+scheduler: setup
+	cd backend && python -m app.scheduler.scheduler_worker
+
+migrate-docker: setup
+	docker compose run --rm backend alembic upgrade head
+
+migration-docker: setup
+	docker compose run --rm backend alembic revision --autogenerate -m "$(name)"
+
+scheduler-docker: setup
+	docker compose run --rm backend python -m app.scheduler.scheduler_worker
+
 backend: setup
 	docker compose up --build backend
 
@@ -42,5 +60,6 @@ clean:
 	rm -rf backend/.venv
 
 package: clean
+	rm -f ../yuno-agent-studio-final.zip
 	cd .. && zip -r yuno-agent-studio-final.zip yuno-agent-studio \
-		-x "*/venv/*" "*/.venv/*" "*/node_modules/*" "*/__pycache__/*" "*.pyc" "*.db" "*/dist/*" "*/.env" "*/__MACOSX/*" "*/.DS_Store"
+		-x "*/.git/*" "*/.pytest_cache/*" "*/venv/*" "*/.venv/*" "*/node_modules/*" "*/__pycache__/*" "*.pyc" "*.db" "*/dist/*" "*/.env" "*/__MACOSX/*" "*/.DS_Store"

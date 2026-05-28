@@ -4,10 +4,13 @@ from .models import (
     WorkflowNode,
     WorkflowEdge,
     WorkflowRun,
+    NodeRun,
+    ChannelMessage,
     AgentMessage,
     RunLog,
     ToolCall,
     TokenUsage,
-    Memory
+    AgentMemory,
+    ScheduledJob
 )
 from app.db.session import Base

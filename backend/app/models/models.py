@@ -9,13 +9,16 @@ def generate_uuid():
 
 class Agent(Base):
     __tablename__ = "agents"
+    def __init__(self, **kwargs):
+        kwargs.pop("goal", None)
+        super().__init__(**kwargs)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     role = Column(String, nullable=False)
-    system_prompt = Column(Text, nullable=False)
-    model = Column(String, nullable=False)
+    system_prompt = Column(Text, nullable=False, default="")
+    model = Column(String, nullable=False, default="gpt-4o-mini")
     tools_json = Column(Text, nullable=False, default="[]")
     memory_enabled = Column(Boolean, default=False)
     guardrails_json = Column(Text, nullable=False, default="{}")
@@ -71,6 +74,48 @@ class WorkflowRun(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
+    idempotency_key = Column(String, unique=True, nullable=True)
+    resumed_from_run_id = Column(String, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True)
+    source = Column(String, nullable=True)
+
+
+
+class NodeRun(Base):
+    __tablename__ = "node_runs"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workflow_run_id = Column(String, ForeignKey("workflow_runs.id", ondelete="CASCADE"), nullable=False)
+    workflow_id = Column(String, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False)
+    node_id = Column(String, ForeignKey("workflow_nodes.id", ondelete="CASCADE"), nullable=False)
+    node_type = Column(String, nullable=False)
+    agent_id = Column(String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
+    tool_name = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="PENDING")
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+    input_json = Column(Text, nullable=False, default="{}")
+    output_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class ChannelMessage(Base):
+    __tablename__ = "channel_messages"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    channel_type = Column(String, nullable=False)
+    external_message_id = Column(String, nullable=False)
+    external_user_id = Column(String, nullable=False)
+    run_id = Column(String, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True)
+    agent_id = Column(String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
+    direction = Column(String, nullable=False) # INBOUND or OUTBOUND
+    status = Column(String, nullable=False) # RECEIVED, PROCESSED, SENT, FAILED, DUPLICATE
+    payload_json = Column(Text, nullable=False, default="{}")
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
 
 class AgentMessage(Base):
@@ -120,7 +165,7 @@ class TokenUsage(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     run_id = Column(String, ForeignKey("workflow_runs.id", ondelete="CASCADE"), nullable=False)
     agent_id = Column(String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
-    model = Column(String, nullable=False)
+    model = Column(String, nullable=False, default="gpt-4o-mini")
     prompt_tokens = Column(Integer, default=0)
     completion_tokens = Column(Integer, default=0)
     total_tokens = Column(Integer, default=0)
@@ -128,13 +173,32 @@ class TokenUsage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Memory(Base):
-    __tablename__ = "memories"
+class AgentMemory(Base):
+    __tablename__ = "agent_memories"
 
     id = Column(String, primary_key=True, default=generate_uuid)
     agent_id = Column(String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(String, nullable=True)
-    key = Column(String, nullable=False)
-    value = Column(Text, nullable=False)
+    memory_type = Column(String, nullable=False) # SHORT_TERM, LONG_TERM
+    content = Column(Text, nullable=False)
+    metadata_json = Column(Text, nullable=False, default="{}")
+    source = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ScheduledJob(Base):
+    __tablename__ = "scheduled_jobs"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)
+    agent_id = Column(String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=True)
+    workflow_id = Column(String, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False)
+    cron_expression = Column(String, nullable=False)
+    enabled = Column(Boolean, default=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_run_id = Column(String, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True)
+    misfire_policy = Column(String, nullable=False, default="SKIP") # SKIP, RUN_ONCE
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())

@@ -41,7 +41,14 @@ Follow these steps to demonstrate the end-to-end execution of Yuno Agent Studio:
    ```
    Add the node, connect it into the workflow, click **Save**, and refresh. Verify the tool node still displays the selected tool and saved config.
 
-9. **Execute Run**:
+9. **LLM-Directed Tool Calling**:
+   Edit or add an **Agent** node and select an agent whose `tools_json` includes `calculator_tool`. Run with:
+   ```text
+   calculate 10 + 20
+   ```
+   Verify the AGENT node sends the calculator schema to the LLM, the LLM requests `calculator_tool`, the runtime executes the requested tool, the tool result is sent back to the LLM, and the final Agent Message uses the result. In Run Monitor, the tool call should appear with source `LLM_TOOL_CALL`.
+
+10. **Execute Run**:
    Type the input query in the text input box:
    ```text
    needs revision: Research AI agents for customer support and create an executive summary.
@@ -49,7 +56,7 @@ Follow these steps to demonstrate the end-to-end execution of Yuno Agent Studio:
    *(The "needs revision" prefix will trigger a conditional loop rejection by the Reviewer Agent on the first pass).*
    Click **Run**.
 
-10. **Observability Event Stream**:
+11. **Observability Event Stream**:
    You will automatically navigate to `/runs/{real_run_id}`.
    Verify that:
    - Status transitions from QUEUED → RUNNING → COMPLETED.
@@ -58,8 +65,8 @@ Follow these steps to demonstrate the end-to-end execution of Yuno Agent Studio:
    - Tool calls show executing inputs and output results.
    - Token Usage and Cost charts populate.
 
-11. **Persisted History Reload**:
+12. **Persisted History Reload**:
     Refresh the browser page. Verify that all historical messages, tool logs, run metrics, and final output data reloads successfully from the database.
 
-12. **WebSocket Resume**:
+13. **WebSocket Resume**:
     Reconnect Run Monitor with a `last_event_id` query parameter. Verify missed events are replayed from persisted `RunLog` history before new live events are streamed.

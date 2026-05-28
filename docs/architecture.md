@@ -47,7 +47,7 @@ The persistence layer utilizes SQLite for local-first zero-config operation:
 
 The default MVP path uses `MockLLM` for deterministic local execution and reliable tests. Real OpenAI mode is also implemented: set `USE_MOCK_LLM=false`, `OPENAI_API_KEY`, and `OPENAI_MODEL` to make agent nodes call OpenAI through `OpenAIClient`.
 
-The runtime calls an `LLMClient` abstraction, so future Ollama/Anthropic clients can be added behind that boundary without changing workflow orchestration, persistence, or monitoring code.
+The runtime calls an `LLMClient` abstraction, so future Ollama/Anthropic clients can be added behind that boundary without changing workflow orchestration, persistence, or monitoring code. The LLM interface supports OpenAI-compatible tool schemas and returns parsed `tool_calls` so AGENT nodes can let the model choose tools.
 
 ## Tool Execution Boundary
 
@@ -56,6 +56,8 @@ Runtime tools are registered backend capabilities. `duckduckgo_search_tool` perf
 Tool inputs, outputs, status, and errors are persisted in `tool_calls`; failures also produce run events so the Run Monitor can display them clearly.
 
 Tool nodes store `tool_name`, `config_json`, and position. The runtime resolves `config_json` into concrete tool inputs, such as calculator `expression`, DuckDuckGo `query_source`, and DuckDuckGo `max_results`.
+
+AGENT nodes support LLM-directed tool calling in addition to explicit workflow TOOL nodes. The runtime sends the configured tool schemas to the model, executes requested and authorized tools, appends tool result messages back into the LLM conversation, and persists the final agent output. Guardrails are enforced before any LLM-requested tool executes.
 
 ## API Response, Correlation, and Logging
 

@@ -20,4 +20,5 @@ export const EDGE_CONDITION_TYPES = {
   REJECTED: "rejected",
   RESOLVED: "resolved",
   ESCALATE: "escalate",
+  EXPRESSION: "expression",
 } as const;

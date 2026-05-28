@@ -14,6 +14,17 @@ export const API_ROUTES = {
   RUN_LOGS: (runId: string) => `/runs/${runId}/logs`,
   RUN_TOOL_CALLS: (runId: string) => `/runs/${runId}/tool-calls`,
   RUN_TOKEN_USAGE: (runId: string) => `/runs/${runId}/token-usage`,
+  RUN_CANCEL: (runId: string) => `/runs/${runId}/cancel`,
+  RUN_RESUME: (runId: string) => `/runs/${runId}/resume`,
+  RUN_METRICS: (runId: string) => `/runs/${runId}/metrics`,
+  RUN_CHANNEL_MESSAGES: (runId: string) => `/runs/${runId}/channel-messages`,
+  RUN_NODE_RUNS: (runId: string) => `/runs/${runId}/node-runs`,
+  AGENT_MEMORIES: (agentId: string) => `/agents/${agentId}/memories`,
+  AGENT_MEMORY_BY_ID: (agentId: string, memoryId: string) => `/agents/${agentId}/memories/${memoryId}`,
+  SCHEDULES: "/schedules",
+  SCHEDULE_BY_ID: (scheduleId: string) => `/schedules/${scheduleId}`,
+  SCHEDULE_TRIGGER: (scheduleId: string) => `/schedules/${scheduleId}/trigger`,
+  CHANNEL_MESSAGES: "/channel-messages",
   WS_RUN: (runId: string, correlationId: string, lastEventId?: number) => {
     const base = `/ws/runs/${runId}?correlation_id=${encodeURIComponent(correlationId)}`;
     return lastEventId ? `${base}&last_event_id=${lastEventId}` : base;

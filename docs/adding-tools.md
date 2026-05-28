@@ -36,8 +36,16 @@ Follow these steps to register a new Python tool in the platform:
    }
    ```
 
+   `backend/app/tools/tool_registry.py` exposes `get_openai_tool_schemas(tool_names)`, which converts registered tools into OpenAI-compatible function schemas. The schema name must match the value used in `Agent.tools_json`, because LLM-directed tool calls are authorized against that list before execution.
+
 3. **Assign to Agents**:
    - In the Agent UI or `seed.py`, assign `"currency_converter"` to the agent's `tools_json` list (e.g. `["currency_converter"]`).
+   - During an AGENT node, the LLM receives only schemas for the agent's configured tools. If the model requests the tool, the runtime executes it, persists a `ToolCall`, sends the result back to the LLM as a tool message, and stores the final `AgentMessage`.
+
+4. **Guardrails**:
+   - `guardrails_json.allowed_tools` can narrow the tools an agent may call.
+   - Blocked keywords and max tool-call limits are checked before executing LLM-requested tools.
+   - Unknown or unauthorized tool calls are persisted as guardrail violations and fail the run before the tool executes.
 ## Included Tool Examples
 
 The repository also includes a real search tool implementation:
@@ -49,4 +57,4 @@ The repository also includes a real search tool implementation:
 
 DuckDuckGo search failures are persisted as `ToolCall` errors and the runtime will continue to show the failure state in the Run Monitor.
 
-Tests should monkeypatch `TOOL_REGISTRY["duckduckgo_search_tool"]` with a deterministic fake instead of calling the real network-backed DuckDuckGo implementation.
+Tests should monkeypatch `TOOL_REGISTRY["duckduckgo_search_tool"]` with a deterministic fake instead of calling the real network-backed DuckDuckGo implementation. OpenAI tool-calling tests monkeypatch `AsyncOpenAI` or the runtime LLM client so no external network is required.

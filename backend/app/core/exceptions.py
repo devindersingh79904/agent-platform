@@ -17,3 +17,6 @@ class ValidationException(AppException):
     def __init__(self, message: str = ErrorMessage.VALIDATION_FAILED, errors: list | None = None):
         super().__init__(message=message, code="VALIDATION_ERROR", status_code=422)
         self.errors = errors or []
+
+class RunCancelledException(Exception):
+    pass

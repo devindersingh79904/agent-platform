@@ -21,6 +21,12 @@ export function getOrCreateCorrelationId(): string {
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
   config.headers["X-Correlation-ID"] = getOrCreateCorrelationId();
+  
+  const apiKey = import.meta.env.VITE_API_KEY;
+  if (apiKey) {
+    config.headers["X-API-Key"] = apiKey;
+  }
+  
   return config;
 });
 
@@ -57,8 +63,27 @@ export const createRun = async (
 };
 export const getRun = async (runId: string) => unwrap<any>(await api.get(API_ROUTES.RUN_BY_ID(runId)));
 export const getRunLogs = async (runId: string) => unwrap<any[]>(await api.get(API_ROUTES.RUN_LOGS(runId)));
+export const getRunNodeRuns = async (runId: string, page = 1, size = 20) => unwrapContent<any>(await api.get(API_ROUTES.RUN_NODE_RUNS(runId), { params: { page, size } }));
 export const getRunMessages = async (runId: string) => unwrap<any[]>(await api.get(API_ROUTES.RUN_MESSAGES(runId)));
 export const getRunToolCalls = async (runId: string) => unwrap<any[]>(await api.get(API_ROUTES.RUN_TOOL_CALLS(runId)));
 export const getRunTokenUsage = async (runId: string) => unwrap<any[]>(await api.get(API_ROUTES.RUN_TOKEN_USAGE(runId)));
+
+export const cancelRun = async (runId: string) => unwrap<any>(await api.post(API_ROUTES.RUN_CANCEL(runId)));
+export const resumeRun = async (runId: string) => unwrap<any>(await api.post(API_ROUTES.RUN_RESUME(runId)));
+export const getRunMetrics = async (runId: string) => unwrap<any>(await api.get(API_ROUTES.RUN_METRICS(runId)));
+
+export const getSchedules = async (page = 1, size = 20) => unwrapContent<any>(await api.get(API_ROUTES.SCHEDULES, { params: { page, size } }));
+export const createSchedule = async (data: any) => unwrap<any>(await api.post(API_ROUTES.SCHEDULES, data));
+export const updateSchedule = async (id: string, data: any) => unwrap<any>(await api.put(API_ROUTES.SCHEDULE_BY_ID(id), data));
+export const deleteSchedule = async (id: string) => unwrap<any>(await api.delete(API_ROUTES.SCHEDULE_BY_ID(id)));
+export const triggerSchedule = async (id: string) => unwrap<any>(await api.post(API_ROUTES.SCHEDULE_TRIGGER(id)));
+
+export const getAgentMemories = async (agentId: string) => unwrapContent<any>(await api.get(API_ROUTES.AGENT_MEMORIES(agentId)));
+export const createAgentMemory = async (agentId: string, data: any) => unwrap<any>(await api.post(API_ROUTES.AGENT_MEMORIES(agentId), data));
+export const updateAgentMemory = async (agentId: string, memoryId: string, data: any) => unwrap<any>(await api.put(API_ROUTES.AGENT_MEMORY_BY_ID(agentId, memoryId), data));
+export const deleteAgentMemory = async (agentId: string, memoryId: string) => unwrap<any>(await api.delete(API_ROUTES.AGENT_MEMORY_BY_ID(agentId, memoryId)));
+
+export const getChannelMessages = async (page = 1, size = 20) => unwrapContent<any>(await api.get(API_ROUTES.CHANNEL_MESSAGES, { params: { page, size } }));
+export const getRunChannelMessages = async (runId: string) => unwrap<any[]>(await api.get(API_ROUTES.RUN_CHANNEL_MESSAGES(runId)));
 
 export default api;

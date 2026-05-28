@@ -6,6 +6,9 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import RunMonitor from './pages/RunMonitor';
 
 import TemplatesGallery from './pages/TemplatesGallery';
+import SchedulesManager from './pages/SchedulesManager';
+import MemoryManager from './pages/MemoryManager';
+import ChannelMessages from './pages/ChannelMessages';
 import { APP_ROUTES } from './constants/appRoutes';
 
 function App() {
@@ -21,6 +24,9 @@ function App() {
             <Route path={APP_ROUTES.AGENTS} element={<AgentsList />} />
             <Route path={APP_ROUTES.TEMPLATES} element={<TemplatesGallery />} />
             <Route path={`${APP_ROUTES.RUNS}/:runId`} element={<RunMonitor />} />
+            <Route path={APP_ROUTES.SCHEDULES} element={<SchedulesManager />} />
+            <Route path={APP_ROUTES.MEMORY} element={<MemoryManager />} />
+            <Route path={APP_ROUTES.CHANNELS} element={<ChannelMessages />} />
           </Routes>
         </main>
       </div>

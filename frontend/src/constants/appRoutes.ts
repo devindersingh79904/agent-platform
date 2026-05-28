@@ -6,4 +6,7 @@ export const APP_ROUTES = {
   TEMPLATES: "/templates",
   RUNS: "/runs",
   RUN_MONITOR: (runId: string) => `/runs/${runId}`,
+  SCHEDULES: "/schedules",
+  MEMORY: "/memory",
+  CHANNELS: "/channels"
 } as const;

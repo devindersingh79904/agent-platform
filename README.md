@@ -17,9 +17,12 @@ Yuno Agent Studio is a local-first AI Agent Orchestration Platform where users c
 | Real runtime | LangGraph StateGraph + compiled.ainvoke |
 | Async agent communication | AgentMessage persistence + WebSocket events |
 | Message history | RunMonitor reloads persisted DB history |
-| Telegram integration | Optional telegram-worker |
-| Live monitoring | Logs, messages, tool calls, token usage, cost |
-| Tests | pytest critical path tests |
+| Telegram integration | telegram-worker with channel deduplication |
+| Live monitoring | Logs, messages, tool calls, token usage, cost, metrics |
+| Tests | pytest critical path tests, api security tests |
+| Advanced Run Durability | SQLite NodeRun persistence, retries, and Guardrails |
+| Advanced Memory | SQLite AgentMemory injection into prompts |
+| Recurring Schedules | APScheduler background worker and CRUD endpoints |
 
 ## Architecture Diagram
 
@@ -65,6 +68,12 @@ make dev
 
 ## Environment Variables
 
+The application can be configured by creating a `.env` file from the example:
+```bash
+cp .env.example .env
+```
+
+**Common Variables:**
 - `USE_MOCK_LLM=true`: Enables deterministic mock responses for local demos and tests.
 - `OPENAI_API_KEY`: Required only when `USE_MOCK_LLM=false`.
 - `OPENAI_MODEL`: OpenAI model used for real LLM mode, default `gpt-4o-mini`.
@@ -75,6 +84,10 @@ make dev
 - `VITE_WS_BASE_URL`: Frontend WebSocket base URL.
 - `SEARCH_PROVIDER=duckduckgo`: Use DuckDuckGo for real web search tool execution.
 - `DUCKDUCKGO_MAX_RESULTS=5`: Maximum number of DuckDuckGo search results returned by the tool.
+
+**Security / Advanced Variables:**
+- `API_AUTH_ENABLED=true`: Enable global API Key authentication (recommended for production).
+- `API_KEY=your_secret_key`: The required API key when `API_AUTH_ENABLED` is true. Include it in requests via the `X-API-Key` header. Frontend client will send this automatically if set.
 
 ## LLM Modes
 
@@ -108,6 +121,8 @@ Never commit `.env` or API keys. `.env` is ignored by `.gitignore`.
 
 Tools are executable backend capabilities invoked by the LangGraph runtime.
 
+Agent nodes support true LLM-directed tool calling: the runtime sends the agent's configured tool schemas to MockLLM/OpenAI, the model may request one or more tool calls, the runtime executes only authorized requested tools, sends each result back to the model, and persists the final agent response. This is separate from explicit workflow `TOOL` nodes, which are graph nodes that always execute when the workflow reaches them.
+
 Included tools:
 - `duckduckgo_search_tool`: real web search using DuckDuckGo, no API key required.
 - `calculator_tool`: safely evaluates basic arithmetic.
@@ -117,7 +132,9 @@ Included tools:
 
 Tool calls are persisted in the `tool_calls` table and streamed to the Run Monitor.
 
-DuckDuckGo can fail if the machine has no internet access or if DuckDuckGo rate limits requests. Such failures are captured as ToolCall errors and shown in the Run Monitor. Tests monkeypatch DuckDuckGo to avoid network dependency.
+Guardrails apply to both explicit `TOOL` nodes and LLM-requested tool calls. The runtime blocks unknown tools, tools not present in the agent's `tools_json`, tools excluded by `guardrails_json.allowed_tools`, blocked keywords in tool arguments, and max tool-call budget violations before execution.
+
+DuckDuckGo can fail if the machine has no internet access or if DuckDuckGo rate limits requests. Such failures are captured as ToolCall errors and shown in the Run Monitor. Tests monkeypatch DuckDuckGo and OpenAI tool-calling responses to avoid network dependency.
 
 ## Demo Script
 
@@ -127,14 +144,14 @@ DuckDuckGo can fail if the machine has no internet access or if DuckDuckGo rate 
    ```
 2. Open the UI at `http://localhost:3000`.
 3. Confirm the 8 agents are available.
-4. Create a workflow from a template.
-5. Open the workflow builder.
-6. Drag a node and save the workflow.
-7. Run the workflow.
+4. Manage persistent Memories via the "Memory" tab.
+5. Create a workflow from a template or build from scratch.
+6. Configure periodic Workflow runs using the "Schedules" tab.
+7. Run the workflow manually from the builder.
 8. Open the Run Monitor.
-9. Verify logs, messages, tool calls, token usage, and cost are visible.
+9. Verify logs, messages, tool calls, token usage, cancel/resume operations, and metrics are visible.
 10. Refresh and confirm persisted history reloads.
-11. Optional: demonstrate Telegram by sending a message to the bot.
+11. Optional: demonstrate Telegram by sending a message to the bot (supports deduplication).
 
 ## API Docs
 
@@ -253,6 +270,7 @@ When `last_event_id` is provided, the backend replays missed `RunLog` events wit
 - Save and Run are disabled during loading and error states.
 - Empty graphs show an explicit empty state instead of a blank canvas.
 - Tool, agent, condition, and end nodes can be added from the builder toolbar.
+- Agent nodes include an agent picker, tool nodes include schema-driven config forms with Advanced JSON fallback, and condition edges include a visual condition editor.
 - Graph saves preserve node metadata such as `node_type`, `agent_id`, `tool_name`, `config_json`, positions, and edge condition fields.
 
 ## Tool Node Configuration
@@ -269,7 +287,7 @@ Supported tools:
 - `summarizer_tool`
 - `draft_response_tool`
 
-The builder includes a tool configuration panel with default JSON for each tool. Saved configs are resolved by the runtime into actual tool inputs, for example calculator expressions or DuckDuckGo `max_results`.
+The builder includes schema-driven fields for common tools and an Advanced JSON fallback. Saved configs are resolved by the runtime into actual tool inputs, for example calculator expressions, manual search queries, or DuckDuckGo `max_results`.
 
 ## Test Strategy
 
@@ -318,8 +336,9 @@ Good-to-have docs are included in the `docs/` folder:
 
 - Additional LLM providers behind the `BaseLLMClient` abstraction.
 - More production-grade auth and tenant isolation.
-- Scheduled workflow execution.
-- Richer tool sandboxing and approval policies.
+- Scheduled workflow execution (Completed using APScheduler worker).
+- API Key Authentication and rate limits (Completed `APIAuthMiddleware`).
+- Guardrails configuration for input/output sanitization (Completed).
 
 ## Final Verification
 
@@ -329,7 +348,9 @@ Run:
 cp .env.example .env
 make clean
 make reset-db
+make migrate
 make test
+cd frontend && npm test
 cd frontend && npm run build
 docker compose build
 docker compose up -d
@@ -352,6 +373,21 @@ Curl checks:
 curl http://localhost:8000/api/agents
 curl http://localhost:8000/api/templates
 ```
+
+## Final Production Verification
+
+- Runtime duplicate event check: PASS
+- `/health` envelope: PASS
+- `/ready` envelope: PASS
+- `RUN_LOG` constants cleanup: PASS
+- `make test`: PASS
+- frontend `npm test`: PASS
+- frontend `npm run build`: PASS
+- `docker compose build`: PASS
+- `docker compose up -d`: PASS
+- final package clean: PASS
+
+See `docs/final-verification-proof.md` for the command-by-command proof report.
 
 ## Evaluation Mapping
 

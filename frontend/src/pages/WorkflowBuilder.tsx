@@ -13,7 +13,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { GitBranch, Play, Plus, RefreshCcw, Save, Wrench } from 'lucide-react';
-import { createRun, getWorkflowGraph, updateWorkflowGraph } from '../api/client';
+import { createRun, getAgents, getWorkflowGraph, updateWorkflowGraph } from '../api/client';
+import ToolConfigForm from '../components/ToolConfigForm';
 import { APP_ROUTES } from '../constants/appRoutes';
 import { UI_MESSAGES } from '../constants/messages';
 import { UI_LABELS } from '../constants/ui';
@@ -38,6 +39,15 @@ const defaultToolConfig = (toolName: string) => {
   return JSON.stringify(config, null, 2);
 };
 
+const parseToolConfig = (configJson: string) => {
+  try {
+    const parsed = JSON.parse(configJson || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
 export default function WorkflowBuilder() {
   const { workflowId } = useParams<{ workflowId: string }>();
   const navigate = useNavigate();
@@ -45,12 +55,23 @@ export default function WorkflowBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [workflow, setWorkflow] = useState<any>(null);
+  const [agents, setAgents] = useState<any[]>([]);
   const [runInput, setRunInput] = useState("");
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [editingToolNodeId, setEditingToolNodeId] = useState<string | null>(null);
+  const [advancedToolJson, setAdvancedToolJson] = useState(false);
   const [toolForm, setToolForm] = useState<{ tool_name: string; config_json: string }>({
     tool_name: TOOL_NAMES.DUCKDUCKGO_SEARCH,
     config_json: defaultToolConfig(TOOL_NAMES.DUCKDUCKGO_SEARCH),
+  });
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [editingAgentNodeId, setEditingAgentNodeId] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [conditionPanelOpen, setConditionPanelOpen] = useState(false);
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
+  const [conditionForm, setConditionForm] = useState<{ condition_type: string; condition_expression: string }>({
+    condition_type: EDGE_CONDITION_TYPES.ALWAYS,
+    condition_expression: "",
   });
   const [toolConfigError, setToolConfigError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +128,10 @@ export default function WorkflowBuilder() {
     loadWorkflow();
   }, [loadWorkflow]);
 
+  useEffect(() => {
+    getAgents().then(setAgents).catch(() => setAgents([]));
+  }, []);
+
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge({
     ...params,
     label: EDGE_CONDITION_TYPES.ALWAYS,
@@ -131,6 +156,81 @@ export default function WorkflowBuilder() {
     ]);
   };
 
+  const agentLabel = (agentId: string) => {
+    const agent = agents.find(item => item.id === agentId);
+    return agent ? `Agent: ${agent.name}` : agentId || WORKFLOW_NODE_TYPES.AGENT;
+  };
+
+  const openAddAgentPanel = () => {
+    setEditingAgentNodeId(null);
+    setSelectedAgentId(agents[0]?.id || "");
+    setAgentPanelOpen(true);
+  };
+
+  const openEditAgentPanel = (node: Node) => {
+    setEditingAgentNodeId(node.id);
+    setSelectedAgentId(String(node.data.agent_id || ""));
+    setAgentPanelOpen(true);
+  };
+
+  const saveAgentNode = () => {
+    if (!selectedAgentId) return;
+    if (editingAgentNodeId) {
+      setNodes(current => current.map(node => node.id === editingAgentNodeId ? {
+        ...node,
+        data: {
+          ...node.data,
+          node_type: WORKFLOW_NODE_TYPES.AGENT,
+          agent_id: selectedAgentId,
+          label: agentLabel(selectedAgentId),
+        },
+      } : node));
+    } else {
+      const id = `${WORKFLOW_NODE_TYPES.AGENT.toLowerCase()}-${Date.now()}`;
+      setNodes(current => [
+        ...current,
+        {
+          id,
+          type: flowTypeForNode(WORKFLOW_NODE_TYPES.AGENT),
+          position: { x: 120 + current.length * 40, y: 120 + current.length * 30 },
+          data: {
+            node_type: WORKFLOW_NODE_TYPES.AGENT,
+            agent_id: selectedAgentId,
+            config_json: "{}",
+            label: agentLabel(selectedAgentId),
+          },
+        },
+      ]);
+    }
+    setAgentPanelOpen(false);
+    setEditingAgentNodeId(null);
+  };
+
+  const openConditionPanel = (edge: Edge) => {
+    const edgeData = edge.data as any;
+    setEditingEdgeId(edge.id);
+    setConditionForm({
+      condition_type: String(edgeData?.condition_type || edge.label || EDGE_CONDITION_TYPES.ALWAYS),
+      condition_expression: String(edgeData?.condition_expression || ""),
+    });
+    setConditionPanelOpen(true);
+  };
+
+  const saveCondition = () => {
+    if (!editingEdgeId) return;
+    setEdges(current => current.map(edge => edge.id === editingEdgeId ? {
+      ...edge,
+      label: conditionForm.condition_type === EDGE_CONDITION_TYPES.EXPRESSION ? conditionForm.condition_expression || EDGE_CONDITION_TYPES.EXPRESSION : conditionForm.condition_type,
+      data: {
+        ...(edge.data as any),
+        condition_type: conditionForm.condition_type,
+        condition_expression: conditionForm.condition_expression,
+      },
+    } : edge));
+    setConditionPanelOpen(false);
+    setEditingEdgeId(null);
+  };
+
   const openAddToolPanel = () => {
     setEditingToolNodeId(null);
     setToolForm({
@@ -138,6 +238,7 @@ export default function WorkflowBuilder() {
       config_json: defaultToolConfig(TOOL_NAMES.DUCKDUCKGO_SEARCH),
     });
     setToolConfigError(null);
+    setAdvancedToolJson(false);
     setToolPanelOpen(true);
   };
 
@@ -149,6 +250,7 @@ export default function WorkflowBuilder() {
       config_json: String(node.data.config_json || defaultToolConfig(toolName)),
     });
     setToolConfigError(null);
+    setAdvancedToolJson(false);
     setToolPanelOpen(true);
   };
 
@@ -157,6 +259,12 @@ export default function WorkflowBuilder() {
       tool_name: toolName,
       config_json: defaultToolConfig(toolName),
     });
+    setToolConfigError(null);
+    setAdvancedToolJson(false);
+  };
+
+  const updateToolConfig = (config: Record<string, any>) => {
+    setToolForm({ ...toolForm, config_json: JSON.stringify(config, null, 2) });
     setToolConfigError(null);
   };
 
@@ -322,7 +430,7 @@ export default function WorkflowBuilder() {
           <GitBranch size={16} />
           Add node
         </span>
-        <button disabled={!workflowLoaded || isLoading || !!error} onClick={() => addNode(WORKFLOW_NODE_TYPES.AGENT)} className="px-3 py-2 rounded-lg border border-slate-200 text-sm disabled:opacity-50">
+        <button disabled={!workflowLoaded || isLoading || !!error || agents.length === 0} onClick={openAddAgentPanel} className="px-3 py-2 rounded-lg border border-slate-200 text-sm disabled:opacity-50">
           <Plus size={14} className="inline mr-1" /> Agent
         </button>
         <button disabled={!workflowLoaded || isLoading || !!error} onClick={openAddToolPanel} className="px-3 py-2 rounded-lg border border-slate-200 text-sm disabled:opacity-50">
@@ -367,7 +475,9 @@ export default function WorkflowBuilder() {
           onConnect={isLoading || !!error ? undefined : onConnect}
           onNodeClick={(_, node) => {
             if (node.data.node_type === WORKFLOW_NODE_TYPES.TOOL) openEditToolPanel(node);
+            if (node.data.node_type === WORKFLOW_NODE_TYPES.AGENT) openEditAgentPanel(node);
           }}
+          onEdgeClick={(_, edge) => openConditionPanel(edge)}
           nodesDraggable={!isLoading && !error}
           nodesConnectable={!isLoading && !error}
           elementsSelectable={!isLoading && !error}
@@ -391,9 +501,23 @@ export default function WorkflowBuilder() {
                   {TOOL_OPTIONS.map(tool => <option key={tool.value} value={tool.value}>{tool.label}</option>)}
                 </select>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Configuration</span>
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" checked={advancedToolJson} onChange={event => setAdvancedToolJson(event.target.checked)} />
+                  Advanced JSON
+                </label>
+              </div>
+              {!advancedToolJson && (
+                <ToolConfigForm
+                  toolName={toolForm.tool_name}
+                  config={parseToolConfig(toolForm.config_json)}
+                  onChange={updateToolConfig}
+                />
+              )}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-slate-700">Config JSON</label>
+                  <label className="block text-sm font-medium text-slate-700">{advancedToolJson ? "Config JSON" : "Config JSON preview"}</label>
                   <button 
                     onClick={() => {
                       try {
@@ -415,7 +539,7 @@ export default function WorkflowBuilder() {
                     setToolForm({ ...toolForm, config_json: e.target.value });
                     setToolConfigError(null);
                   }}
-                  className="w-full min-h-44 border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm"
+                  className="w-full min-h-28 border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm"
                 />
               </div>
               {toolConfigError && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{toolConfigError}</div>}
@@ -426,6 +550,66 @@ export default function WorkflowBuilder() {
               </button>
               <button onClick={saveToolNode} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
                 {editingToolNodeId ? "Save changes" : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {agentPanelOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">{editingAgentNodeId ? "Edit Agent Node" : "Add Agent Node"}</h2>
+            </div>
+            <div className="p-5">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Agent</label>
+              <select value={selectedAgentId} onChange={event => setSelectedAgentId(event.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                <option value="">Select an agent</option>
+                {agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name} ({agent.role})</option>)}
+              </select>
+            </div>
+            <div className="border-t border-slate-200 px-5 py-4 flex justify-end gap-3">
+              <button onClick={() => setAgentPanelOpen(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">
+                Cancel
+              </button>
+              <button disabled={!selectedAgentId} onClick={saveAgentNode} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                {editingAgentNodeId ? "Save changes" : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {conditionPanelOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">Edit Condition</h2>
+            </div>
+            <div className="p-5 space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Condition type
+                <select value={conditionForm.condition_type} onChange={event => setConditionForm({ ...conditionForm, condition_type: event.target.value })} className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  <option value={EDGE_CONDITION_TYPES.ALWAYS}>Always</option>
+                  <option value={EDGE_CONDITION_TYPES.APPROVED}>Approved</option>
+                  <option value={EDGE_CONDITION_TYPES.REJECTED}>Rejected</option>
+                  <option value={EDGE_CONDITION_TYPES.RESOLVED}>Resolved</option>
+                  <option value={EDGE_CONDITION_TYPES.ESCALATE}>Escalate</option>
+                  <option value={EDGE_CONDITION_TYPES.EXPRESSION}>Expression</option>
+                </select>
+              </label>
+              {conditionForm.condition_type === EDGE_CONDITION_TYPES.EXPRESSION && (
+                <label className="block text-sm font-medium text-slate-700">
+                  Condition expression
+                  <input value={conditionForm.condition_expression} onChange={event => setConditionForm({ ...conditionForm, condition_expression: event.target.value })} className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                </label>
+              )}
+            </div>
+            <div className="border-t border-slate-200 px-5 py-4 flex justify-end gap-3">
+              <button onClick={() => setConditionPanelOpen(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">
+                Cancel
+              </button>
+              <button onClick={saveCondition} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                Save changes
               </button>
             </div>
           </div>

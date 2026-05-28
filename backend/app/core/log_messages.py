@@ -7,5 +7,6 @@ class LogMessage:
     TOOL_CALL_STARTED = "Tool call started"
     TOOL_CALL_COMPLETED = "Tool call completed"
     TOOL_CALL_FAILED = "Tool call failed"
+    LLM_TOOL_CALL_REQUESTED = "LLM tool call requested"
     LLM_CALL_STARTED = "LLM call started"
     LLM_CALL_COMPLETED = "LLM call completed"

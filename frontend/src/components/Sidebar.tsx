@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, GitMerge, FileText, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, GitMerge, FileText, Activity, Clock, Database, MessageCircle } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { APP_ROUTES } from '../constants/appRoutes';
@@ -15,6 +15,9 @@ const Sidebar = () => {
     { to: APP_ROUTES.WORKFLOWS, icon: <GitMerge size={20} />, label: "Workflows" },
     { to: APP_ROUTES.TEMPLATES, icon: <FileText size={20} />, label: "Templates" },
     { to: APP_ROUTES.RUNS, icon: <Activity size={20} />, label: "Runs" },
+    { to: APP_ROUTES.SCHEDULES, icon: <Clock size={20} />, label: "Schedules" },
+    { to: APP_ROUTES.MEMORY, icon: <Database size={20} />, label: "Memory" },
+    { to: APP_ROUTES.CHANNELS, icon: <MessageCircle size={20} />, label: "Channels" },
   ];
 
   return (

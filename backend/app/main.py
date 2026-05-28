@@ -4,13 +4,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.db.session import engine, Base
-from app.api import agents, workflows, runs, templates, config, enums
+from app.api import agents, templates, workflows, runs, config, enums, schedules, channel_messages
 from app.core.api_paths import API_PREFIX, ApiPath
+from enum import Enum
+
+class ExtraApiPath(str, Enum):
+    SCHEDULES = "/schedules"
 from app.core.correlation import CorrelationIdMiddleware
 from app.core.exceptions import AppException
 from app.core.logger import RequestLoggingMiddleware, get_logger, setup_logging
+from app.core.security import APIAuthMiddleware
 from app.schemas.base_response import ErrorDetail
 from app.utils.response_builder import error_response, success_response
+import os
 from app.websocket import run_monitor
 from app.core.messages import ErrorMessage, ResponseMessage
 
@@ -31,10 +37,13 @@ app = FastAPI(title="Yuno Agent Studio API")
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(APIAuthMiddleware)
+
+cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,7 +56,11 @@ app.include_router(templates.router, prefix=f"{API_PREFIX}{ApiPath.TEMPLATES}", 
 app.include_router(runs.router, prefix=f"{API_PREFIX}{ApiPath.RUNS}", tags=["Runs"])
 app.include_router(config.router, prefix=f"{API_PREFIX}{ApiPath.CONFIG}", tags=["Config"])
 app.include_router(enums.router, prefix=f"{API_PREFIX}{ApiPath.ENUMS}", tags=["Enums"])
+app.include_router(schedules.router, prefix=f"{API_PREFIX}{ExtraApiPath.SCHEDULES.value}", tags=["Schedules"])
+app.include_router(channel_messages.router, prefix=f"{API_PREFIX}/channel-messages", tags=["Channel Messages"])
 app.include_router(run_monitor.router, tags=["Websocket"])
+
+# Start scheduler is handled by a separate worker process now
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
@@ -116,5 +129,30 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/")
-def health_check(request: Request):
+def root_check(request: Request):
     return success_response(request, ResponseMessage.HEALTH_CHECK_SUCCESS, {"status": "ok", "app": "Yuno Agent Studio"})
+
+@app.get("/health")
+def health_check(request: Request):
+    return success_response(request, ResponseMessage.HEALTH_CHECK_SUCCESS, {"status": "ok"})
+
+@app.get("/ready")
+def ready_check(request: Request):
+    try:
+        # Check DB by getting a session and executing a simple query
+        from app.db.session import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "ok"
+    except Exception:
+        db_status = "error"
+        
+    use_mock = os.getenv("USE_MOCK_LLM", "true").lower() == "true"
+    return success_response(request, ResponseMessage.READINESS_CHECK_SUCCESS, {
+        "status": "ready",
+        "database": db_status,
+        "llm_provider": "mock" if use_mock else "openai",
+        "scheduler": "enabled" if os.getenv("SCHEDULER_ENABLED", "false").lower() == "true" else "disabled"
+    })
