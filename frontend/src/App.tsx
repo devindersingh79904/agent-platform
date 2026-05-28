@@ -1,0 +1,31 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import AgentsList from './pages/AgentsList';
+import WorkflowBuilder from './pages/WorkflowBuilder';
+import RunMonitor from './pages/RunMonitor';
+
+import TemplatesGallery from './pages/TemplatesGallery';
+import { APP_ROUTES } from './constants/appRoutes';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+          <Routes>
+            <Route path={APP_ROUTES.DASHBOARD} element={<Dashboard />} />
+            <Route path={`${APP_ROUTES.WORKFLOWS}/:workflowId`} element={<WorkflowBuilder />} />
+            <Route path={APP_ROUTES.WORKFLOWS} element={<WorkflowBuilder />} />
+            <Route path={APP_ROUTES.AGENTS} element={<AgentsList />} />
+            <Route path={APP_ROUTES.TEMPLATES} element={<TemplatesGallery />} />
+            <Route path={`${APP_ROUTES.RUNS}/:runId`} element={<RunMonitor />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;

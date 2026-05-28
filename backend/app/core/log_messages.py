@@ -1,0 +1,11 @@
+class LogMessage:
+    RUN_STARTED = "Workflow run started"
+    RUN_COMPLETED = "Workflow run completed"
+    RUN_FAILED = "Workflow run failed"
+    NODE_STARTED = "Node execution started"
+    NODE_COMPLETED = "Node execution completed"
+    TOOL_CALL_STARTED = "Tool call started"
+    TOOL_CALL_COMPLETED = "Tool call completed"
+    TOOL_CALL_FAILED = "Tool call failed"
+    LLM_CALL_STARTED = "LLM call started"
+    LLM_CALL_COMPLETED = "LLM call completed"
