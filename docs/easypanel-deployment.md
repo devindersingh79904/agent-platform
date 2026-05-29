@@ -10,21 +10,19 @@ To fully run Devinder AI Agent Studio, you need to create the following four ser
 3. `scheduler-worker`
 4. `telegram-worker`
 
-All backend-based services (`backend-api`, `scheduler-worker`, `telegram-worker`) must share the exact same persistent volume mounted at `/app/data` to use the same SQLite database.
+> **Important:**
+> - SQLite is acceptable for quick demo deployment.
+> - `backend-api`, `scheduler-worker`, and `telegram-worker` must mount the same persistent volume at `/app/data`.
+> - Telegram worker uses polling, so it does not need a public port.
+> - Scheduler worker does not need a public port.
+> - Do not add PostgreSQL now.
 
 ## Service 1: backend-api
 
-- **Type**: App
-- **Build context**: `backend/`
-- **Dockerfile**: `backend/Dockerfile`
-- **Public port**: `8000`
-- **Command**:
-  ```bash
-  uvicorn app.main:app --host 0.0.0.0 --port 8000
-  ```
-
-**Volume**:
-Host/EasyPanel volume -> `/app/data`
+- **Build Path**: `/backend`
+- **Dockerfile**: `Dockerfile`
+- **Port**: `8000`
+- **Volume**: `/app/data`
 
 **Environment Variables**:
 ```env
@@ -34,64 +32,44 @@ LLM_PROVIDER=openai
 USE_MOCK_LLM=false
 OPENAI_API_KEY=your_key
 OPENAI_MODEL=gpt-4o-mini
-BACKEND_URL=https://your-backend-domain.com
 CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
-API_AUTH_ENABLED=false
 ```
 
 ## Service 2: frontend
 
-- **Type**: App
-- **Build context**: `frontend/`
-- **Dockerfile**: `frontend/Dockerfile`
-- **Public port**: `80`
+- **Build Path**: `/frontend`
+- **Dockerfile**: `Dockerfile`
+- **Port**: `80`
 
 **Build Arguments** (Vite requires these at build time):
 ```env
 VITE_API_BASE_URL=https://your-backend-domain.com/api
 VITE_WS_BASE_URL=wss://your-backend-domain.com
 VITE_APP_NAME=Devinder AI Agent Studio
-VITE_API_KEY=
 ```
-
-**Environment Variables** (For completeness, though Vite uses Build Args):
-```env
-VITE_API_BASE_URL=https://your-backend-domain.com/api
-VITE_WS_BASE_URL=wss://your-backend-domain.com
-VITE_APP_NAME=Devinder AI Agent Studio
-```
-*Note: If backend or frontend domains change, you must rebuild the frontend service.*
 
 ## Service 3: scheduler-worker
 
-- **Type**: App
-- **Build context**: `backend/`
-- **Dockerfile**: `backend/Dockerfile`
-- **Public port**: none
-- **Command**:
-  ```bash
-  python -m app.scheduler.scheduler_worker
-  ```
-
-**Volume**:
-Mount the *same persistent volume* used by backend-api -> `/app/data`
+- **Build Path**: `/backend`
+- **Dockerfile**: `Dockerfile.scheduler`
+- **Port**: none
+- **Volume**: `/app/data`
 
 **Environment Variables**:
-Use the same `DATABASE_URL` and OpenAI settings as `backend-api`.
+```env
+DATABASE_URL=sqlite:///./data/agent_studio.db
+LLM_PROVIDER=openai
+USE_MOCK_LLM=false
+OPENAI_API_KEY=your_key
+OPENAI_MODEL=gpt-4o-mini
+```
 
 ## Service 4: telegram-worker
 
-- **Type**: App
-- **Build context**: `backend/`
-- **Dockerfile**: `backend/Dockerfile`
-- **Public port**: none
-- **Command**:
-  ```bash
-  python -m app.channels.telegram_worker
-  ```
-
-**Volume**:
-Mount the *same persistent volume* used by backend-api -> `/app/data`
+- **Build Path**: `/backend`
+- **Dockerfile**: `Dockerfile.telegram`
+- **Port**: none
+- **Volume**: `/app/data`
 
 **Environment Variables**:
 ```env
@@ -99,7 +77,18 @@ DATABASE_URL=sqlite:///./data/agent_studio.db
 TELEGRAM_BOT_TOKEN=your_bot_token
 DEFAULT_TELEGRAM_WORKFLOW_ID=your_default_workflow_id
 LLM_PROVIDER=openai
+USE_MOCK_LLM=false
 OPENAI_API_KEY=your_key
 OPENAI_MODEL=gpt-4o-mini
 BACKEND_URL=https://your-backend-domain.com
+```
+
+## Local Build Verification
+
+To verify the Dockerfiles build successfully locally before deploying:
+
+```bash
+docker build -t ai-agent-backend ./backend
+docker build -t ai-agent-telegram -f backend/Dockerfile.telegram ./backend
+docker build -t ai-agent-scheduler -f backend/Dockerfile.scheduler ./backend
 ```
