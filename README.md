@@ -414,6 +414,18 @@ curl http://localhost:8000/api/templates
 
 See `docs/final-verification-proof.md` for the command-by-command proof report.
 
+## EasyPanel Deployment
+
+Recommended services:
+1. `backend-api`
+2. `frontend`
+3. `scheduler-worker`
+4. `telegram-worker`
+
+For quick demo deployment, SQLite is supported using a `/app/data` persistent volume. See [docs/easypanel-deployment.md](docs/easypanel-deployment.md) for step-by-step setup details.
+
+> **Warning:** SQLite is acceptable for demo/single-user deployment. With multiple workers, avoid heavy parallel workflows because SQLite can lock under concurrent writes. For serious production, use PostgreSQL later.
+
 ## Evaluation Mapping
 
 | Evaluation Area | Implementation |
