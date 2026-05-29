@@ -112,7 +112,7 @@ cp .env.example .env
 - `API_KEY=your_secret_key`: The required API key when `API_AUTH_ENABLED` is true. Include it in requests via the `X-API-Key` header. Frontend client will send this automatically if set.
 - `APP_NAME`: Configures the FastAPI app title (defaults to "Devinder AI Agent Studio").
 - `VITE_APP_NAME`: Configures the frontend sidebar header and browser tab title (defaults to "Devinder AI Agent Studio").
-- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins (defaults securely to `http://localhost:3000`).
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins (defaults securely to `http://localhost:3000`). Use `*` only for demo/testing. For production, set exact frontend domain (e.g., `https://your-frontend-domain.com`).
 
 ## LLM Modes
 
@@ -423,6 +423,17 @@ Recommended services:
 4. `telegram-worker`
 
 For quick demo deployment, SQLite is supported using a `/app/data` persistent volume. See [docs/easypanel-deployment.md](docs/easypanel-deployment.md) for step-by-step setup details.
+
+### EasyPanel CORS Quick Fix
+If you encounter `400 Bad Request` preflight errors during an EasyPanel deployment/demo, set the following backend environment variable:
+```env
+CORS_ALLOWED_ORIGINS=*
+```
+
+**Production recommended:**
+```env
+CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
+```
 
 > **Warning:** SQLite is acceptable for demo/single-user deployment. With multiple workers, avoid heavy parallel workflows because SQLite can lock under concurrent writes. For serious production, use PostgreSQL later.
 

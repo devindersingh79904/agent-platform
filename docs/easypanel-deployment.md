@@ -32,7 +32,8 @@ LLM_PROVIDER=openai
 USE_MOCK_LLM=false
 OPENAI_API_KEY=your_key
 OPENAI_MODEL=gpt-4o-mini
-CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
+# Use "*" only for demo/testing. For production, set exact frontend domain.
+CORS_ALLOWED_ORIGINS=*
 ```
 
 ## Service 2: frontend

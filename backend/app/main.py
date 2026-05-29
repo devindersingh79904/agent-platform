@@ -40,18 +40,26 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(APIAuthMiddleware)
 
 cors_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+
 if cors_origins_raw == "*":
-    cors_origins = ["*"]
+    logger.info("CORS configured with wildcard origin ('*'). Use this only for development/demo.")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 else:
     cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    logger.info(f"CORS configured with allowed origins: {cors_origins}")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Include Routers
 app.include_router(agents.router, prefix=f"{API_PREFIX}{ApiPath.AGENTS}", tags=["Agents"])
