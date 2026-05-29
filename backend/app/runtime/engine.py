@@ -569,7 +569,8 @@ class RuntimeService:
 
                     configured_tool_names = RuntimeService.parse_agent_tool_names(agent)
                     if allowed_tools is not None:
-                        disallowed_configured_tools = [name for name in configured_tool_names if name not in allowed_tools]
+                        resolved_allowed = [resolve_tool_alias(t) for t in allowed_tools]
+                        disallowed_configured_tools = [name for name in configured_tool_names if resolve_tool_alias(name) not in resolved_allowed]
                         if disallowed_configured_tools:
                             message = f"Unauthorized tool requested: {disallowed_configured_tools[0]}"
                             await RuntimeService.emit_event(run_id, WebSocketEventType.GUARDRAIL_VIOLATION.value, node_id=node.id, agent_id=agent.id, message=message, db=db)
@@ -592,8 +593,14 @@ class RuntimeService:
                     if state.get("node_outputs"):
                         prompt += "\\n\\nPrevious node outputs:\\n" + json.dumps(state["node_outputs"])
 
-                    llm_client = get_llm_client()
-                    conversation = input_messages.copy()
+                    llm_client = get_llm_client(agent.model)
+                    
+                    # Sanitize messages to remove non-standard keys like 'agent_id' before sending to LLM
+                    conversation = [
+                        {k: v for k, v in msg.items() if k in ("role", "content", "name", "tool_calls", "tool_call_id")}
+                        for msg in input_messages
+                    ]
+                    
                     if prompt and (not conversation or conversation[-1].get("content") != prompt):
                         conversation.append({"role": "user", "content": prompt})
 

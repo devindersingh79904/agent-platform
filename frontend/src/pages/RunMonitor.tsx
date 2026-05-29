@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getOrCreateCorrelationId, getRunLogs, getRunMessages, getRunToolCalls, getRunTokenUsage, getRun, getRunMetrics, WS_BASE_URL, cancelRun, resumeRun, getRunNodeRuns } from '../api/client';
+import { getOrCreateCorrelationId, getRunLogs, getRunMessages, getRunToolCalls, getRunTokenUsage, getRun, getRunMetrics, WS_BASE_URL, cancelRun, resumeRun, getRunNodeRuns, getAgents } from '../api/client';
 import { AlertTriangle, MessageSquare, Terminal, Wrench, Coins, XCircle, Play, ShieldAlert, Activity } from 'lucide-react';
 import { API_ROUTES } from '../constants/apiRoutes';
 import { UI_MESSAGES } from '../constants/messages';
@@ -19,6 +19,7 @@ const RunMonitor = () => {
   const [runData, setRunData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [agents, setAgents] = useState<any[]>([]);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -33,17 +34,19 @@ const RunMonitor = () => {
       getRunToolCalls(runId).catch(() => []),
       getRunTokenUsage(runId).catch(() => []),
       getRunMetrics(runId).catch(() => null),
-      getRunNodeRuns(runId).catch(() => [])
-    ]).then(([run, pastLogs, pastMsgs, pastTools, pastTokens, pastMetrics, pastNodeRuns]) => {
+      getRunNodeRuns(runId).catch(() => []),
+      getAgents().catch(() => [])
+    ]).then(([run, pastLogs, pastMsgs, pastTools, pastTokens, pastMetrics, pastNodeRuns, pastAgents]) => {
       if (run) {
         setRunData(run);
         if (run.status) setStatus(run.status);
       }
       setLogs(pastLogs);
-      setMessages(pastMsgs);
+      setMessages(pastMsgs.filter((m: any) => m.message_type !== "TASK_HANDOFF" && m.payload?.message_type !== "TASK_HANDOFF"));
       setToolCalls(pastTools);
       setTokenUsage(pastTokens);
       setNodeRuns(pastNodeRuns || []);
+      setAgents(pastAgents || []);
       if (pastMetrics) setMetrics(pastMetrics);
 
       const maxEventId = pastLogs.length > 0 ? Math.max(...pastLogs.map((log: any) => log.event_id || 0)) : undefined;
@@ -101,7 +104,9 @@ const RunMonitor = () => {
         if ([WS_EVENTS.RUN_STARTED, WS_EVENTS.NODE_STARTED, WS_EVENTS.NODE_COMPLETED, WS_EVENTS.RUN_COMPLETED, WS_EVENTS.RUN_FAILED, WS_EVENTS.CONDITION_EVALUATED, WS_EVENTS.GUARDRAIL_VIOLATION].includes(event_type)) {
           setLogs(prev => [...prev, data]);
         } else if (event_type === WS_EVENTS.AGENT_MESSAGE_CREATED) {
-          setMessages(prev => [...prev, data]);
+          if (payload?.message_type !== "TASK_HANDOFF") {
+            setMessages(prev => [...prev, data]);
+          }
         } else if (event_type === WS_EVENTS.LLM_TOOL_CALL_REQUESTED || event_type === WS_EVENTS.TOOL_CALL_STARTED || event_type === WS_EVENTS.TOOL_CALL_COMPLETED || event_type === WS_EVENTS.TOOL_CALL_FAILED) {
           setToolCalls(prev => [...prev, data]);
         } else if (event_type === WS_EVENTS.TOKEN_USAGE_RECORDED) {
@@ -241,12 +246,34 @@ const RunMonitor = () => {
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && <div className="text-slate-400 text-center mt-10">{UI_MESSAGES.NO_MESSAGES}</div>}
-            {messages.map((msg, idx) => (
-              <div key={idx} className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-sm">
-                <div className="font-bold text-indigo-700 mb-1">{msg.agent_id || msg.payload?.agent_id || msg.from_agent_id || "Agent"}</div>
-                <div className="text-slate-800 whitespace-pre-wrap">{msg.content || msg.payload?.content}</div>
-              </div>
-            ))}
+            {runData?.input_json && (
+              (() => {
+                try {
+                  const parsed = typeof runData.input_json === 'string' ? JSON.parse(runData.input_json) : runData.input_json;
+                  const userMsg = parsed.message || parsed.text || parsed.input;
+                  if (userMsg) {
+                    return (
+                      <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg text-sm">
+                        <div className="font-bold text-slate-700 mb-1">User</div>
+                        <div className="text-slate-800 whitespace-pre-wrap">{userMsg}</div>
+                      </div>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()
+            )}
+            {messages.map((msg, idx) => {
+              const rawAgentId = msg.agent_id || msg.payload?.agent_id || msg.from_agent_id;
+              const agent = agents.find(a => a.id === rawAgentId);
+              const displayName = agent ? agent.name : (rawAgentId || "Agent");
+              return (
+                <div key={idx} className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-sm">
+                  <div className="font-bold text-indigo-700 mb-1">{displayName}</div>
+                  <div className="text-slate-800 whitespace-pre-wrap">{msg.content || msg.payload?.content}</div>
+                </div>
+              );
+            })}
             {runData?.output_json && (
                <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-sm">
                 <div className="font-bold text-green-800 mb-1">Final Output</div>
@@ -353,16 +380,20 @@ const RunMonitor = () => {
                 </tr>
               </thead>
               <tbody>
-                {tokenUsage.map((usage, idx) => (
-                  <tr key={idx} className="border-t border-slate-100">
-                    <td className="p-3 font-mono text-slate-700">{usage.agent_id || "Agent"}</td>
-                    <td className="p-3 font-mono text-slate-700">{usage.model || "unknown"}</td>
-                    <td className="p-3">{usage.prompt_tokens || 0}</td>
-                    <td className="p-3">{usage.completion_tokens || 0}</td>
-                    <td className="p-3 font-semibold">{usage.total_tokens || 0}</td>
-                    <td className="p-3">${Number(usage.estimated_cost || 0).toFixed(6)}</td>
-                  </tr>
-                ))}
+                {tokenUsage.map((usage, idx) => {
+                  const agent = agents.find(a => a.id === usage.agent_id);
+                  const displayName = agent ? agent.name : (usage.agent_id || "Agent");
+                  return (
+                    <tr key={idx} className="border-t border-slate-100">
+                      <td className="p-3 font-mono text-slate-700">{displayName}</td>
+                      <td className="p-3 font-mono text-slate-700">{usage.model || "unknown"}</td>
+                      <td className="p-3">{usage.prompt_tokens || 0}</td>
+                      <td className="p-3">{usage.completion_tokens || 0}</td>
+                      <td className="p-3 font-semibold">{usage.total_tokens || 0}</td>
+                      <td className="p-3">${Number(usage.estimated_cost || 0).toFixed(6)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

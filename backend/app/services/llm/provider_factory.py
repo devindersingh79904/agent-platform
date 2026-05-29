@@ -4,37 +4,45 @@ from app.services.llm.mock_provider import MockProvider
 from app.services.llm.openai_provider import OpenAIProvider
 
 
-_cached_provider = None
+_cached_providers = {}
 
-
-def get_llm_provider() -> LLMProvider:
-    global _cached_provider
-    if _cached_provider is not None:
-        return _cached_provider
-
-    provider = os.getenv("LLM_PROVIDER")
-    use_mock = os.getenv("USE_MOCK_LLM", "true").lower() == "true"
-
-    if use_mock:
-        # Backward compatibility
-        provider = "mock"
+def get_llm_provider(model: str = None) -> LLMProvider:
+    global _cached_providers
     
-    if not provider:
-        provider = "mock" if use_mock else "openai"
+    use_mock = os.getenv("USE_MOCK_LLM", "true").lower() == "true"
+    if use_mock:
+        if "mock" not in _cached_providers:
+            _cached_providers["mock"] = MockProvider()
+        return _cached_providers["mock"]
 
-    if provider == "mock":
-        _cached_provider = MockProvider()
-    elif provider == "openai":
-        _cached_provider = OpenAIProvider()
-    else:
-        # Default to mock
-        _cached_provider = MockProvider()
-
-    return _cached_provider
-
+    # Determine provider by model
+    provider = "openai"
+    if model and ("llama" in model.lower() or "mixtral" in model.lower() or "gemma" in model.lower() or "groq" in model.lower()):
+        provider = "groq"
+    elif model and "gemini" in model.lower():
+        provider = "google"
+    elif os.getenv("LLM_PROVIDER") == "groq":
+        provider = "groq"
+    elif os.getenv("LLM_PROVIDER") == "google":
+        provider = "google"
+    
+    if provider not in _cached_providers:
+        if provider == "groq":
+            from app.services.llm.groq_provider import GroqProvider
+            _cached_providers["groq"] = GroqProvider()
+        elif provider == "google":
+            from app.services.llm.google_provider import GoogleProvider
+            _cached_providers["google"] = GoogleProvider()
+        else:
+            _cached_providers["openai"] = OpenAIProvider()
+            
+    return _cached_providers[provider]
 
 async def close_llm_provider():
-    global _cached_provider
-    if _cached_provider is not None:
-        await _cached_provider.close()
-        _cached_provider = None
+    global _cached_providers
+    for provider in _cached_providers.values():
+        await provider.close()
+    _cached_providers.clear()
+
+
+

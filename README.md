@@ -60,10 +60,32 @@ MockLLM is enabled by default to make local execution deterministic, repeatable,
 
 ## Setup Instructions
 
+### Option 1: With Docker (Recommended)
 ```bash
 cp .env.example .env
 make reset-db
 make dev
+```
+
+### Option 2: Native Local Setup (Without Docker)
+1. Configure Environment:
+```bash
+cp .env.example .env
+```
+2. Start Backend:
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -m app.db.reset_db
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+3. Start Frontend (in a new terminal):
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ## Environment Variables

@@ -3,6 +3,9 @@ from typing import Iterable
 from app.tools.core_tools import ALL_TOOLS, TOOL_REGISTRY
 
 TOOL_ALIASES = {
+    "calculator_tool": "calculator",
+    "summarizer_tool": "summarizer",
+    "knowledge_base_tool": "knowledge_base_lookup",
     "draft_generator": "draft_response_tool",
     "draft_generator_tool": "draft_response_tool",
     "web_search": "duckduckgo_search_tool",

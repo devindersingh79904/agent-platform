@@ -145,6 +145,31 @@ export default function WorkflowBuilder() {
     loadWorkflow();
   }, [loadWorkflow]);
 
+  useEffect(() => {
+    if (agents.length > 0 && nodes.length > 0) {
+      setNodes((current) => {
+        let changed = false;
+        const newNodes = current.map((n) => {
+          if (n.data.node_type === WORKFLOW_NODE_TYPES.AGENT && n.data.agent_id) {
+            const agent = agents.find((a) => a.id === n.data.agent_id);
+            if (agent && n.data.label !== `Agent: ${agent.name}`) {
+              changed = true;
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  label: `Agent: ${agent.name}`,
+                },
+              };
+            }
+          }
+          return n;
+        });
+        return changed ? newNodes : current;
+      });
+    }
+  }, [agents, workflowLoaded]);
+
   const handleSaveMeta = async () => {
     if (!workflowId || !editedName.trim()) return;
     setIsSavingMeta(true);

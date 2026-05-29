@@ -5,8 +5,8 @@ from app.services.llm.openai_provider import OpenAIProvider as OpenAIClient
 from app.services.llm.provider_factory import get_llm_provider
 
 
-def get_llm_client() -> BaseLLMClient:
-    return get_llm_provider()
+def get_llm_client(model: str = None) -> BaseLLMClient:
+    return get_llm_provider(model)
 
 
 class LLMClient(BaseLLMClient):
@@ -20,7 +20,7 @@ class LLMClient(BaseLLMClient):
         tool_choice: str | Dict[str, Any] | None = "auto",
         messages: List[Dict[str, Any]] | None = None,
     ) -> LLMResponse:
-        return await get_llm_client().generate(
+        return await get_llm_client(model).generate(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             model=model,

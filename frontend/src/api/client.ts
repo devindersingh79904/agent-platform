@@ -67,6 +67,23 @@ export const getRunsPaginated = async (
   return unwrap<any>(response);
 };
 export const getConfig = async () => unwrap<any>(await api.get(API_ROUTES.CONFIG));
+
+export type ChannelStatusResponse = {
+  telegram: {
+    active: boolean;
+    bot_token_configured: boolean;
+    default_workflow_configured: boolean;
+    bot_username: string | null;
+    bot_url: string | null;
+    connection_mode: string;
+  };
+  web_ui: {
+    active: boolean;
+    websocket_endpoint: string;
+  };
+};
+
+export const getChannels = async () => unwrap<ChannelStatusResponse>(await api.get(API_ROUTES.METADATA_CHANNELS));
 export const getMetadataModels = async () => unwrap<any>(await api.get(API_ROUTES.METADATA_MODELS));
 export const getMetadataTools = async () => unwrap<any>(await api.get(API_ROUTES.METADATA_TOOLS));
 export const getMetadataChannels = async () => unwrap<any>(await api.get(API_ROUTES.METADATA_CHANNELS));
