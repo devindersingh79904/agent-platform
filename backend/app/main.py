@@ -23,6 +23,30 @@ from app.core.messages import ErrorMessage, ResponseMessage
 setup_logging()
 logger = get_logger(__name__)
 
+import threading
+import asyncio
+
+def is_env_enabled(name: str) -> bool:
+    return os.getenv(name, "false").lower() in {"true", "1", "yes", "y"}
+
+def run_telegram_worker_safe():
+    try:
+        from app.channels.telegram_worker import main as telegram_main
+        telegram_main()
+    except Exception:
+        logger.exception("Telegram worker crashed")
+
+def run_scheduler_worker_safe():
+    try:
+        from app.scheduler.scheduler_worker import start_scheduler
+        logger.info("Starting scheduler worker in background...")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        start_scheduler()
+        loop.run_forever()
+    except Exception:
+        logger.exception("Scheduler worker crashed")
+
 # Create database tables and seed missing defaults
 db_type = "sqlite" if os.getenv("DATABASE_URL", "sqlite://").startswith("sqlite:") else "postgresql"
 logger.info("Database configured", extra={"database_type": db_type})
@@ -144,6 +168,25 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 
+@app.on_event("startup")
+async def start_background_workers():
+    if is_env_enabled("TELEGRAM_ENABLED"):
+        logger.info("Telegram worker enabled")
+        if os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("DEFAULT_TELEGRAM_WORKFLOW_ID"):
+            threading.Thread(target=run_telegram_worker_safe, name="telegram-worker", daemon=True).start()
+            logger.info("Telegram worker started in background")
+        else:
+            logger.warning("Telegram enabled but required config missing. Worker not started.")
+    else:
+        logger.info("Telegram worker disabled")
+
+    if is_env_enabled("SCHEDULER_ENABLED"):
+        logger.info("Scheduler worker enabled")
+        threading.Thread(target=run_scheduler_worker_safe, name="scheduler-worker", daemon=True).start()
+        logger.info("Scheduler worker started in background")
+    else:
+        logger.info("Scheduler worker disabled")
+
 @app.on_event("shutdown")
 async def shutdown():
     from app.services.llm.provider_factory import close_llm_provider
@@ -172,9 +215,18 @@ def ready_check(request: Request):
         db_status = "error"
         
     use_mock = os.getenv("USE_MOCK_LLM", "true").lower() == "true"
+    
+    telegram_configured = bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("DEFAULT_TELEGRAM_WORKFLOW_ID"))
+    telegram_worker_status = "disabled"
+    if is_env_enabled("TELEGRAM_ENABLED"):
+        telegram_worker_status = "enabled_configured" if telegram_configured else "enabled_missing_config"
+        
+    scheduler_status = "enabled" if is_env_enabled("SCHEDULER_ENABLED") else "disabled"
+        
     return success_response(request, ResponseMessage.READINESS_CHECK_SUCCESS, {
         "status": "ready",
         "database": db_status,
         "llm_provider": "mock" if use_mock else "openai",
-        "scheduler": "enabled" if os.getenv("SCHEDULER_ENABLED", "false").lower() == "true" else "disabled"
+        "telegram_worker": telegram_worker_status,
+        "scheduler": scheduler_status
     })

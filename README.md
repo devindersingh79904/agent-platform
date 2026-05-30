@@ -98,6 +98,8 @@ cp .env.example .env
 **Common Variables:**
 - `USE_MOCK_LLM=true`: Enables deterministic mock responses for local demos and tests.
 - `OPENAI_API_KEY`: Required only when `USE_MOCK_LLM=false`.
+- `TELEGRAM_ENABLED`: Set to true to start the Telegram polling worker inside the backend. Default false.
+- `SCHEDULER_ENABLED`: Set to true to start the APScheduler worker inside the backend. Default false.
 - `OPENAI_MODEL`: OpenAI model used for real LLM mode, default `gpt-4o-mini`.
 - `TELEGRAM_BOT_TOKEN`: Token from BotFather for Telegram integration.
 - `DEFAULT_TELEGRAM_WORKFLOW_ID`: Workflow ID from a created workflow URL used by the Telegram bot.
@@ -435,38 +437,45 @@ CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
 ```
 
-### Production deployment with Postgres
+### Single service deployment (Demo/Lightweight)
 
-Step 1:
-Create Postgres database in EasyPanel or external provider.
+You can run everything in one EasyPanel backend service for a demo/lightweight deployment:
+Only deploy the backend service (disable or delete the separate Telegram and Scheduler services in EasyPanel).
+Telegram and Scheduler workers are started automatically by the backend if enabled via env variables. No `Dockerfile.telegram` is required.
 
-Step 2:
-Set the same DATABASE_URL in backend and telegram worker:
-`DATABASE_URL=postgresql+psycopg2://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>`
+Backend service env:
+```env
+DATABASE_URL=postgresql+psycopg2://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>
 
-Step 3:
-Redeploy backend first.
+USE_MOCK_LLM=false
+LLM_PROVIDER=openai
+OPENAI_API_KEY=<openai_api_key>
+OPENAI_MODEL=gpt-4o-mini
 
-Step 4:
-Confirm backend starts and tables are created.
+SEARCH_PROVIDER=duckduckgo
+DUCKDUCKGO_MAX_RESULTS=5
 
-Step 5:
-Create or verify workflow exists in Postgres DB.
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=<telegram_bot_token>
+TELEGRAM_BOT_USERNAME=<telegram_username>
+DEFAULT_TELEGRAM_WORKFLOW_ID=<existing_workflow_id>
 
-Step 6:
-Set Telegram worker env:
-`TELEGRAM_BOT_TOKEN=<token>`
-`DEFAULT_TELEGRAM_WORKFLOW_ID=<existing_workflow_id>`
-`DATABASE_URL=same as backend`
+SCHEDULER_ENABLED=true
 
-Step 7:
-Redeploy Telegram worker.
+APP_NAME=Devinder AI Agent Studio
+CORS_ALLOWED_ORIGINS=*
 
-Step 8:
-Check Telegram worker logs. Expected log:
-`Starting Telegram polling...`
-If env is missing, expected log:
-`Telegram disabled: TELEGRAM_BOT_TOKEN and DEFAULT_TELEGRAM_WORKFLOW_ID must both be configured`
+BACKEND_URL=https://<backend-domain>
+```
+
+Frontend service env remains separate:
+```env
+VITE_API_BASE_URL=https://<backend-domain>/api
+VITE_WS_BASE_URL=wss://<backend-domain>
+VITE_APP_NAME=Devinder AI Agent Studio
+```
+
+> **Important Production Warning:** This single-service mode is good for demo/small deployment. For production scale, use separate worker services or ensure only one instance runs Telegram polling and scheduler to avoid duplicate processing. Do not run multiple backend replicas with `TELEGRAM_ENABLED=true` and `SCHEDULER_ENABLED=true`, because Telegram polling and scheduler may run multiple times.
 
 > **Warning:** SQLite is acceptable for demo/single-user deployment. With multiple workers, avoid heavy parallel workflows because SQLite can lock under concurrent writes. For serious production, use PostgreSQL as described above.
 
