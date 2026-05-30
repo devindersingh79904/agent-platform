@@ -95,7 +95,7 @@ const RunMonitor = () => {
             if (exists && event_type === WS_EVENTS.NODE_COMPLETED) {
               return prev.map(nr => nr.node_id === data.node_id ? { ...nr, status: 'COMPLETED' } : nr);
             } else if (!exists && event_type === WS_EVENTS.NODE_STARTED) {
-              return [...prev, { node_id: data.node_id, status: 'RUNNING', created_at: data.timestamp }];
+              return [...prev, { node_id: data.node_id, agent_id: data.agent_id, status: 'RUNNING', created_at: data.timestamp }];
             }
             return prev;
           });
@@ -345,7 +345,18 @@ const RunMonitor = () => {
                       nr.status === 'FAILED' ? 'bg-rose-50 border-rose-200 text-rose-800' :
                       'bg-blue-50 border-blue-200 text-blue-800 animate-pulse'
                     }`}>
-                      <div className="font-bold text-sm">{nr.node_id}</div>
+                      <div className="font-bold text-sm">
+                        {(() => {
+                          if (nr.agent_id) {
+                            const agent = agents.find((a: any) => a.id === nr.agent_id);
+                            if (agent) return agent.name;
+                          }
+                          if (nr.node_id?.startsWith('start')) return 'Start';
+                          if (nr.node_id?.startsWith('condition')) return 'Condition';
+                          if (nr.node_id?.startsWith('end')) return 'End';
+                          return nr.node_id;
+                        })()}
+                      </div>
                       <div className="text-xs font-mono">{nr.status}</div>
                     </div>
                     {idx < nodeRuns.length - 1 && (
