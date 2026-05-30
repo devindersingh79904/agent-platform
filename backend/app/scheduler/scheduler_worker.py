@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import threading
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
@@ -16,6 +17,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
+_scheduler_started = False
+_scheduler_lock = threading.Lock()
 
 async def execute_scheduled_job(job_id: str):
     db = SessionLocal()
@@ -85,8 +88,17 @@ def sync_jobs():
         db.close()
 
 def start_scheduler():
-    scheduler.start()
-    sync_jobs()
+    global _scheduler_started
+    
+    with _scheduler_lock:
+        if _scheduler_started and scheduler.running:
+            logger.info("Scheduler already running, skipping startup")
+            return
+            
+        scheduler.start()
+        sync_jobs()
+        _scheduler_started = True
+        logger.info("Scheduler started")
 
 if __name__ == "__main__":
     logger.info("Starting scheduler worker...")

@@ -123,6 +123,9 @@ def is_configured() -> bool:
     default_workflow_id = os.getenv("DEFAULT_TELEGRAM_WORKFLOW_ID")
     return bool(token and default_workflow_id)
 
+async def telegram_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.exception("Telegram error while handling update", exc_info=context.error)
+
 def main():
     if not is_configured():
         logger.info("Telegram disabled: TELEGRAM_BOT_TOKEN and DEFAULT_TELEGRAM_WORKFLOW_ID must both be configured")
@@ -133,6 +136,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_error_handler(telegram_error_handler)
 
     logger.info("Starting Telegram polling...")
     application.run_polling(
