@@ -244,7 +244,15 @@ const AgentsList = () => {
       ]);
       setMetaModels(modelsRes.models || []);
       setMetaTools(toolsRes.tools || []);
-      setMetaChannels(channelsRes.channels || []);
+      
+      let parsedChannels = channelsRes.channels || [];
+      if (parsedChannels.length === 0 && channelsRes.telegram) {
+        parsedChannels = [
+          { name: 'telegram', label: 'Telegram', configured: channelsRes.telegram.bot_token_configured },
+          { name: 'web', label: 'Web UI', configured: true }
+        ];
+      }
+      setMetaChannels(parsedChannels);
     } catch (err) {
       console.error("Failed to load metadata", err);
     }
