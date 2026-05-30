@@ -111,59 +111,113 @@ def get_workflow_graph(workflow_id: str, request: Request, db: Session = Depends
 def update_workflow_graph(workflow_id: str, payload: dict, request: Request, db: Session = Depends(get_db)):
     import uuid
     import json
-    # Delete existing nodes and edges
-    db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).delete()
-    db.query(WorkflowEdge).filter(WorkflowEdge.workflow_id == workflow_id).delete()
+    from app.core.logger import get_logger
+    from fastapi import HTTPException
     
-    # Insert new ones
+    logger = get_logger(__name__)
+    
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise NotFoundException("Workflow not found")
+
     nodes_data = payload.get("nodes", [])
     edges_data = payload.get("edges", [])
     
+    logger.info("Updating workflow graph", extra={
+        "workflow_id": workflow_id,
+        "node_count": len(nodes_data),
+        "edge_count": len(edges_data),
+    })
+    
+    # Ensure all nodes have IDs
     for n in nodes_data:
-        node_type = n.get("node_type") or n.get("type") or n.get("data", {}).get("node_type")
-        if node_type == "input":
-            node_type = NodeType.START.value
-        elif node_type == "output":
-            node_type = NodeType.END.value
-        elif not node_type:
-            node_type = NodeType.AGENT.value
-            
-        agent_id = n.get("agent_id") or n.get("data", {}).get("agent_id")
-        tool_name = n.get("tool_name") or n.get("data", {}).get("tool_name")
-        config_json = n.get("config_json") or n.get("config") or n.get("data", {}).get("config_json")
-        if isinstance(config_json, dict):
-            config_json = json.dumps(config_json)
-        elif not config_json:
-            config_json = "{}"
-            
-        position_x = n.get("position", {}).get("x", n.get("position_x", 0))
-        position_y = n.get("position", {}).get("y", n.get("position_y", 0))
+        if not n.get("id"):
+            n["id"] = str(uuid.uuid4())
 
-        db.add(WorkflowNode(
-            id=n.get("id") or str(uuid.uuid4()), 
-            workflow_id=workflow_id,
-            node_type=node_type, 
-            agent_id=agent_id,
-            tool_name=tool_name,
-            config_json=config_json,
-            position_x=int(position_x), 
-            position_y=int(position_y)
-        ))
-        
+    node_ids = {n.get("id") for n in nodes_data}
+    
+    if not node_ids:
+        raise HTTPException(status_code=400, detail="Workflow graph must contain at least one node")
+
+    missing_refs = []
     for e in edges_data:
-        source_node_id = e.get("source_node_id") or e.get("source")
-        target_node_id = e.get("target_node_id") or e.get("target")
-        condition_type = e.get("condition_type") or e.get("label") or e.get("data", {}).get("condition_type") or EdgeCondition.ALWAYS.value
-        condition_expression = e.get("condition_expression") or e.get("data", {}).get("condition_expression")
+        source_id = e.get("source_node_id") or e.get("source")
+        target_id = e.get("target_node_id") or e.get("target")
+        if source_id not in node_ids:
+            missing_refs.append({"edge_id": e.get("id"), "field": "source_node_id", "node_id": source_id})
+        if target_id not in node_ids:
+            missing_refs.append({"edge_id": e.get("id"), "field": "target_node_id", "node_id": target_id})
+            
+    if missing_refs:
+        logger.warning("Workflow graph validation failed: missing edge node references", extra={
+            "workflow_id": workflow_id,
+            "missing_refs": missing_refs,
+        })
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Workflow graph contains edges referencing missing nodes",
+                "missing_refs": missing_refs,
+            },
+        )
 
-        db.add(WorkflowEdge(
-            id=e.get("id") or str(uuid.uuid4()), 
-            workflow_id=workflow_id,
-            source_node_id=source_node_id, 
-            target_node_id=target_node_id,
-            condition_type=condition_type,
-            condition_expression=condition_expression
-        ))
+    try:
+        # Delete existing edges first to prevent foreign key violations, then nodes
+        db.query(WorkflowEdge).filter(WorkflowEdge.workflow_id == workflow_id).delete(synchronize_session=False)
+        db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).delete(synchronize_session=False)
         
-    db.commit()
+        for n in nodes_data:
+            node_type = n.get("node_type") or n.get("type") or n.get("data", {}).get("node_type")
+            if node_type == "input":
+                node_type = NodeType.START.value
+            elif node_type == "output":
+                node_type = NodeType.END.value
+            elif not node_type:
+                node_type = NodeType.AGENT.value
+                
+            agent_id = n.get("agent_id") or n.get("data", {}).get("agent_id")
+            tool_name = n.get("tool_name") or n.get("data", {}).get("tool_name")
+            config_json = n.get("config_json") or n.get("config") or n.get("data", {}).get("config_json")
+            if isinstance(config_json, dict):
+                config_json = json.dumps(config_json)
+            elif not config_json:
+                config_json = "{}"
+                
+            position_x = n.get("position", {}).get("x", n.get("position_x", 0))
+            position_y = n.get("position", {}).get("y", n.get("position_y", 0))
+
+            db.add(WorkflowNode(
+                id=n["id"], 
+                workflow_id=workflow_id,
+                node_type=node_type, 
+                agent_id=agent_id,
+                tool_name=tool_name,
+                config_json=config_json,
+                position_x=int(position_x), 
+                position_y=int(position_y)
+            ))
+            
+        db.flush() # flush nodes so edges can reference them safely
+        
+        for e in edges_data:
+            source_node_id = e.get("source_node_id") or e.get("source")
+            target_node_id = e.get("target_node_id") or e.get("target")
+            condition_type = e.get("condition_type") or e.get("label") or e.get("data", {}).get("condition_type") or EdgeCondition.ALWAYS.value
+            condition_expression = e.get("condition_expression") or e.get("data", {}).get("condition_expression")
+
+            db.add(WorkflowEdge(
+                id=e.get("id") or str(uuid.uuid4()), 
+                workflow_id=workflow_id,
+                source_node_id=source_node_id, 
+                target_node_id=target_node_id,
+                condition_type=condition_type,
+                condition_expression=condition_expression
+            ))
+            
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to update workflow graph", extra={"workflow_id": workflow_id})
+        raise HTTPException(status_code=500, detail="Failed to update workflow graph")
+
     return success_response(request, ResponseMessage.WORKFLOW_GRAPH_UPDATED, {"status": "ok"})
