@@ -453,6 +453,7 @@ class RuntimeService:
                     else:
                         input_str = str(input_val)
                     state["current_output"] = input_str
+                    state.setdefault("messages", []).append({"role": "user", "content": input_str})
                     node_run.output_json = json.dumps({"output": input_str})
                     return
 
@@ -518,7 +519,10 @@ class RuntimeService:
                     if not input_messages:
                         input_messages = [{"role": "user", "content": state["current_output"]}]
 
-                    sys_prompt = agent.system_prompt
+                    sys_prompt = agent.system_prompt or ""
+                    
+                    from datetime import datetime
+                    sys_prompt += f"\n\nSystem Note: The current date and time is {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}."
                     
                     # Memory Injection
                     if agent.memory_enabled:
