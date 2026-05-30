@@ -6,6 +6,30 @@ Devinder AI Agent Studio is a local-first AI Agent Orchestration Platform where 
 
 Devinder AI Agent Studio is a local-first AI Agent Orchestration Platform where users can create configurable agents, connect them into LangGraph workflows, run them, monitor execution, and interact through Telegram.
 
+## Demo Video
+
+[Watch the Full Demo Video on Google Drive](https://drive.google.com/file/d/1EBveeLeAreKX1ie9QPXAKyssOXeLPjHT/view?usp=sharing)
+
+## Application Flow
+
+Devinder AI Agent Studio operates on a unified, state-driven flow:
+1. **Agent Creation**: Users define independent Agents with specific roles, system prompts, models, and tools.
+2. **Workflow Building**: Users link these Agents together in the visual drag-and-drop Workflow Builder. They map out the execution path, including conditional logic, to pass context between agents.
+3. **Execution**: The workflow is compiled into a LangGraph `StateGraph`. The backend executes nodes sequentially or conditionally based on the LLM's output.
+4. **Monitoring**: The Run Monitor connects via WebSockets to stream live execution logs, agent messages, tool calls, and token usage metrics.
+5. **Channels**: (Optional) Users can interact with workflows externally via Telegram or run them automatically on a recurring schedule.
+
+## How to Create an Agent
+
+1. Open the UI at `http://localhost:3000` and navigate to the **Agents** tab.
+2. Click **Create Agent**.
+3. **Name your Agent** (e.g., "Research Agent").
+4. **Configure the System Prompt**: Define the agent's behavior and personality (e.g., "You are an expert researcher...").
+5. **Select an LLM**: Choose between `mock-llm` (for local deterministic testing) or a real OpenAI model like `gpt-4o-mini`.
+6. **Assign Tools**: Provide the agent with capabilities (e.g., `duckduckgo_search_tool`, `calculator_tool`) by defining them in the Tools JSON array.
+7. **Set Guardrails**: Define keyword limits, budgets, or block lists to safely sandbox the agent's behavior.
+8. Click **Save**. Your agent is now ready to be dropped into any Workflow!
+
 ## Requirement Mapping Table
 
 | Challenge Requirement | Implementation |
