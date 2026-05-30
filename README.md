@@ -101,7 +101,7 @@ cp .env.example .env
 - `OPENAI_MODEL`: OpenAI model used for real LLM mode, default `gpt-4o-mini`.
 - `TELEGRAM_BOT_TOKEN`: Token from BotFather for Telegram integration.
 - `DEFAULT_TELEGRAM_WORKFLOW_ID`: Workflow ID from a created workflow URL used by the Telegram bot.
-- `DATABASE_URL`: SQLite database URL for the backend data store.
+- `DATABASE_URL`: Database connection string. Use `sqlite:///./data/ai_agent_studio.db` for local testing, or `postgresql+psycopg2://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>` for production. Both backend and telegram worker must use the exact same DATABASE_URL.
 - `VITE_API_BASE_URL`: Frontend API base URL.
 - `VITE_WS_BASE_URL`: Frontend WebSocket base URL.
 - `SEARCH_PROVIDER=duckduckgo`: Use DuckDuckGo for real web search tool execution.
@@ -435,7 +435,40 @@ CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
 ```
 
-> **Warning:** SQLite is acceptable for demo/single-user deployment. With multiple workers, avoid heavy parallel workflows because SQLite can lock under concurrent writes. For serious production, use PostgreSQL later.
+### Production deployment with Postgres
+
+Step 1:
+Create Postgres database in EasyPanel or external provider.
+
+Step 2:
+Set the same DATABASE_URL in backend and telegram worker:
+`DATABASE_URL=postgresql+psycopg2://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>`
+
+Step 3:
+Redeploy backend first.
+
+Step 4:
+Confirm backend starts and tables are created.
+
+Step 5:
+Create or verify workflow exists in Postgres DB.
+
+Step 6:
+Set Telegram worker env:
+`TELEGRAM_BOT_TOKEN=<token>`
+`DEFAULT_TELEGRAM_WORKFLOW_ID=<existing_workflow_id>`
+`DATABASE_URL=same as backend`
+
+Step 7:
+Redeploy Telegram worker.
+
+Step 8:
+Check Telegram worker logs. Expected log:
+`Starting Telegram polling...`
+If env is missing, expected log:
+`Telegram disabled: TELEGRAM_BOT_TOKEN and DEFAULT_TELEGRAM_WORKFLOW_ID must both be configured`
+
+> **Warning:** SQLite is acceptable for demo/single-user deployment. With multiple workers, avoid heavy parallel workflows because SQLite can lock under concurrent writes. For serious production, use PostgreSQL as described above.
 
 ## Evaluation Mapping
 

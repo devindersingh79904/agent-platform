@@ -24,6 +24,8 @@ setup_logging()
 logger = get_logger(__name__)
 
 # Create database tables and seed missing defaults
+db_type = "sqlite" if os.getenv("DATABASE_URL", "sqlite://").startswith("sqlite:") else "postgresql"
+logger.info("Database configured", extra={"database_type": db_type})
 Base.metadata.create_all(bind=engine)
 from app.db.session import SessionLocal
 from app.db.seed import seed_missing_defaults
