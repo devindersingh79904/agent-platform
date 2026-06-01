@@ -116,18 +116,19 @@ const SchedulesManager: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
           <Clock className="text-indigo-600" />
           Schedules Manager
         </h1>
-        <button onClick={() => openModal()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+        <button onClick={() => openModal()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
           <Plus size={18} /> New Schedule
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1">
-        <table className="w-full text-left border-collapse">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[800px] text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
               <th className="py-4 px-6">Name / CRON</th>
@@ -179,11 +180,12 @@ const SchedulesManager: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Schedule' : 'Create Schedule'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

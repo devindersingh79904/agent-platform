@@ -172,8 +172,8 @@ const RunMonitor = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+        <h1 className="text-3xl font-bold text-slate-900 flex flex-wrap items-center gap-2 md:gap-3">
           <span>Run Monitor</span>
           <span className={`text-sm px-3 py-1 rounded-full font-bold ${status === 'LIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
             {status}
@@ -189,7 +189,7 @@ const RunMonitor = () => {
             </span>
           )}
         </h1>
-        <div className="flex space-x-6 items-center">
+        <div className="flex flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 md:gap-6 w-full xl:w-auto">
           <div className="flex items-center space-x-2 text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
             <Coins size={18} className="text-yellow-500" />
             <div className="flex flex-col text-xs font-mono">
@@ -204,7 +204,7 @@ const RunMonitor = () => {
               </div>
             </div>
           )}
-          <div className="font-mono text-sm text-slate-500">Run ID: {runId}</div>
+          <div className="font-mono text-xs sm:text-sm text-slate-500 break-all self-center">Run ID: {runId}</div>
         </div>
       </div>
       {loading && <div className="bg-white border border-slate-200 rounded-lg p-4 text-slate-500">Loading run history...</div>}
@@ -302,7 +302,7 @@ const RunMonitor = () => {
                 {(tool.error_message || tool.payload?.error) && (
                   <div className="text-rose-700 mb-2">Error: {tool.error_message || tool.payload?.error}</div>
                 )}
-                <div className="text-slate-800 break-words">{JSON.stringify(tool.payload || tool, null, 2)}</div>
+                <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-all bg-slate-50 p-2 rounded border border-slate-100 max-h-40 overflow-y-auto">{JSON.stringify(tool.payload || tool, null, 2)}</pre>
               </div>
             ))}
           </div>
@@ -379,7 +379,7 @@ const RunMonitor = () => {
           <div className="p-6 text-center text-slate-400">{UI_MESSAGES.NO_TOKEN_USAGE}</div>
         ) : (
           <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full min-w-[600px] text-sm text-left">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="p-3">Agent</th>
@@ -417,7 +417,7 @@ const RunMonitor = () => {
             <Activity size={18} />
             <span>Execution Metrics</span>
           </div>
-          <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
              <div className="bg-slate-50 border border-slate-100 p-4 rounded-lg">
                 <div className="text-slate-500 text-xs font-semibold mb-1 uppercase tracking-wider">Nodes Run</div>
                 <div className="text-2xl font-bold text-slate-800">{metrics.node_count}</div>

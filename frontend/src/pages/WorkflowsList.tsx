@@ -125,7 +125,7 @@ export default function WorkflowsList() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
           <GitMerge size={28} className="text-indigo-500" />
           Workflows
@@ -133,7 +133,7 @@ export default function WorkflowsList() {
         <button
           id="btn-new-workflow"
           onClick={openCreateModal}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm w-full sm:w-auto"
         >
           <Plus size={16} />
           New Workflow
@@ -228,7 +228,7 @@ export default function WorkflowsList() {
       {/* ═══ Create Modal ══════════════════════════════════════════ */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">Create New Workflow</h2>
             </div>
@@ -290,7 +290,7 @@ export default function WorkflowsList() {
       {/* ═══ Edit Modal ════════════════════════════════════════════ */}
       {showEditModal && editingWorkflow && (
         <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">Edit Workflow</h2>
             </div>

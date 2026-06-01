@@ -25,12 +25,12 @@ const ChannelMessages = () => {
 
   return (
     <div className="h-full flex flex-col space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
           <MessageCircle className="text-indigo-600" />
           Channel Messages
         </h1>
-        <button onClick={fetchMessages} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+        <button onClick={fetchMessages} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors w-full sm:w-auto">
           Refresh
         </button>
       </div>
@@ -47,7 +47,7 @@ const ChannelMessages = () => {
       {!loading && messages.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex-1">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                 <tr>
                   <th className="p-4 font-semibold">Channel</th>

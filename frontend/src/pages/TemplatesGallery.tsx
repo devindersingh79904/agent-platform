@@ -56,7 +56,7 @@ const TemplatesGallery = () => {
         <div className="bg-white border border-dashed border-slate-200 rounded-lg p-8 text-center text-slate-500">No templates available.</div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {templates.map(tpl => (
           <div key={tpl.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col hover:shadow-md transition">
             <h3 className="text-xl font-bold text-slate-900 mb-2">{tpl.name}</h3>

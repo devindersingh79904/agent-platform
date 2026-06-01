@@ -331,6 +331,13 @@ When `last_event_id` is provided, the backend replays missed `RunLog` events wit
 - Agent nodes include an agent picker, tool nodes include schema-driven config forms with Advanced JSON fallback, and condition edges include a visual condition editor.
 - Graph saves preserve node metadata such as `node_type`, `agent_id`, `tool_name`, `config_json`, positions, and edge condition fields.
 
+## Fully Responsive Layout & Mobile UX
+
+- **Responsive Viewports**: The studio is optimized for mobile (320px-767px), tablet (768px-1023px), and desktop (1024px+) viewports.
+- **Mobile Drawer Navigation**: On mobile and tablet screens, the navigation sidebar collapses into a slide-over drawer overlaying the screen. It can be opened using the topbar hamburger menu and automatically closed via backdrop clicks, the close button, pressing the `Escape` key, or clicking any navigation route.
+- **Responsive Grids & Forms**: Multi-column forms, dashboard statistics, and gallery elements automatically collapse into single/double column grids on mobile viewports. Dialogs enforce `max-h-[90vh]` and `overflow-y-auto` scroll safety.
+- **Scrollable Wide Components**: Data tables and flow nodes scroll horizontally (`overflow-x-auto`) to protect structural spacing and avoid horizontal viewport overflow.
+
 ## Tool Node Configuration
 
 Tool nodes can be added from Workflow Builder. Each tool node stores:

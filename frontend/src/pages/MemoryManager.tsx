@@ -108,12 +108,12 @@ const MemoryManager: React.FC = () => {
         </h1>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4">
-        <label className="font-semibold text-slate-700">Select Agent:</label>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <label className="font-semibold text-slate-700 whitespace-nowrap">Select Agent:</label>
         <select 
           value={selectedAgent} 
           onChange={(e) => setSelectedAgent(e.target.value)}
-          className="flex-1 bg-slate-50 border border-slate-300 text-slate-900 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+          className="w-full sm:flex-1 bg-slate-50 border border-slate-300 text-slate-900 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5"
         >
           {agents.length === 0 && <option value="">No agents found...</option>}
           {agents.map(agent => (
@@ -123,7 +123,7 @@ const MemoryManager: React.FC = () => {
         <button 
           onClick={() => setIsAdding(true)}
           disabled={!selectedAgent}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto"
         >
           <Plus size={18} /> Add Memory
         </button>

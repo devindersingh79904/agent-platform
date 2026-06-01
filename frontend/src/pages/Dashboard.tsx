@@ -36,7 +36,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
         <div className="flex space-x-3">
           <Link to={APP_ROUTES.TEMPLATES} className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
@@ -54,7 +54,7 @@ const Dashboard = () => {
       )}
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
           <div>
             <div className="text-sm text-slate-500 font-medium uppercase tracking-wider">Total Agents</div>
@@ -84,7 +84,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
           <div>
             <div className="text-sm text-slate-500 font-medium uppercase tracking-wider">LLM Mode</div>

@@ -135,14 +135,14 @@ const RunsList = () => {
   return (
     <div className="space-y-6">
       {/* Title Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
           <Activity size={28} className="text-indigo-500" />
           Workflow Runs
         </h1>
         <button
           onClick={loadRuns}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm border border-slate-200 shadow-sm"
+          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm border border-slate-200 shadow-sm w-full sm:w-auto"
         >
           <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
           Refresh
@@ -229,7 +229,7 @@ const RunsList = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full min-w-[800px] text-left">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="p-4 font-semibold text-slate-600 text-sm">Run ID</th>
@@ -246,7 +246,8 @@ const RunsList = () => {
                     <td className="p-4">
                       <Link
                         to={APP_ROUTES.RUN_MONITOR(run.id)}
-                        className="font-mono text-sm text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+                        className="font-mono text-sm text-indigo-600 hover:text-indigo-800 hover:underline font-medium block truncate max-w-[120px] sm:max-w-none"
+                        title={run.id}
                       >
                         {run.id}
                       </Link>

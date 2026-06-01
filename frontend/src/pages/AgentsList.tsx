@@ -323,9 +323,9 @@ const AgentsList = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900">Agents</h1>
-        <button onClick={() => handleOpenModal()} className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+        <button onClick={() => handleOpenModal()} className="flex items-center justify-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
           <Plus size={18} />
           <span>New Agent</span>
         </button>
@@ -338,7 +338,8 @@ const AgentsList = () => {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="p-4 font-semibold text-slate-600">Name</th>
@@ -375,6 +376,7 @@ const AgentsList = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (
@@ -405,7 +407,7 @@ const AgentsList = () => {
               </div>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                   <input required type="text" className="w-full border border-slate-300 rounded-lg px-3 py-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -465,7 +467,7 @@ const AgentsList = () => {
                   <>
                     <div className="col-span-2 space-y-2">
                       <label className="block text-sm font-medium text-slate-700 mb-1">Tools</label>
-                      <div className="grid grid-cols-2 gap-2 border border-slate-200 rounded-lg p-3 max-h-32 overflow-y-auto">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-slate-200 rounded-lg p-3 max-h-32 overflow-y-auto">
                         {metaTools.map(t => (
                           <label key={t.name} className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
                             <input
@@ -487,7 +489,7 @@ const AgentsList = () => {
 
                     <div className="col-span-2 space-y-2">
                       <label className="block text-sm font-medium text-slate-700 mb-1">Channels</label>
-                      <div className="flex space-x-4 border border-slate-200 rounded-lg p-3">
+                      <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0 border border-slate-200 rounded-lg p-3">
                         {metaChannels.map(c => (
                           <label key={c.name} className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
                             <input
@@ -509,7 +511,7 @@ const AgentsList = () => {
 
                     <div className="col-span-2 border border-slate-200 rounded-lg p-4 space-y-4">
                       <h3 className="font-semibold text-slate-900 text-sm">Security & Guardrails</h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="col-span-2">
                           <label className="block text-xs font-medium text-slate-500 mb-1">Allowed Tools (Leave empty for all)</label>
                           <div className="grid grid-cols-2 gap-2 border border-slate-100 rounded-lg p-2 max-h-24 overflow-y-auto bg-slate-50">
@@ -591,7 +593,7 @@ const AgentsList = () => {
 
                     <div className="col-span-2 border border-slate-200 rounded-lg p-4 space-y-4">
                       <h3 className="font-semibold text-slate-900 text-sm">Execution Limits</h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-medium text-slate-500 mb-1">Max Iterations</label>
                           <input
@@ -662,7 +664,7 @@ const AgentsList = () => {
                           </label>
                         </div>
                         {structuredConfig.schedule.enabled && (
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs font-medium text-slate-500 mb-1">Cron Expression</label>
                               <input

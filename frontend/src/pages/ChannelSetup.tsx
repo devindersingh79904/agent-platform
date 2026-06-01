@@ -45,14 +45,14 @@ const ChannelSetup = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
           <Bot className="text-indigo-600" size={32} />
           <span>Conversational Channels</span>
         </h1>
         <Link 
           to={APP_ROUTES.CHANNEL_MESSAGES} 
-          className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold shadow-sm transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold shadow-sm transition-colors text-sm w-full sm:w-auto"
         >
           <MessageSquare size={18} />
           <span>View Message Logs</span>
@@ -241,7 +241,7 @@ const ChannelSetup = () => {
               {botUrl && (
                 <div className="mt-4 pt-4 border-t border-emerald-200/50">
                   <span className="text-emerald-700 text-xs uppercase font-bold tracking-wider">Bot Link</span>
-                  <a href={botUrl} target="_blank" rel="noreferrer" className="block mt-1 font-mono text-emerald-800 hover:text-emerald-600 transition-colors">
+                  <a href={botUrl} target="_blank" rel="noreferrer" className="block mt-1 font-mono text-emerald-800 hover:text-emerald-600 transition-colors break-all">
                     {botUrl}
                   </a>
                 </div>
