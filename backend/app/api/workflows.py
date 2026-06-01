@@ -32,24 +32,22 @@ def get_workflows(
 
 @router.post("/{workflow_id}/runs")
 def create_workflow_run(workflow_id: str, payload: dict, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    from app.models.models import WorkflowRun
-    import uuid
-    import json
-    from datetime import datetime
     from app.api.runs import execute_run_task
-    from app.runtime.engine import normalize_run_input
+    from app.services.workflow_run_service import WorkflowRunService
+    from fastapi import HTTPException
+    import json
     
-    normalized = normalize_run_input(payload)
-    normalized["correlation_id"] = getattr(request.state, "correlation_id", None)
-    run_id = str(uuid.uuid4())
-    new_run = WorkflowRun(id=run_id, workflow_id=workflow_id, input_json=json.dumps(normalized), status=RunStatus.QUEUED.value, started_at=datetime.utcnow())
-    db.add(new_run)
-    db.commit()
-    db.refresh(new_run)
+    raw_input = payload or {}
+    raw_input["correlation_id"] = getattr(request.state, "correlation_id", None)
+    
+    try:
+        new_run = WorkflowRunService.create_run(db, workflow_id, raw_input, trigger_source="api", commit=True)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    background_tasks.add_task(execute_run_task, run_id, workflow_id, normalized)
+    background_tasks.add_task(execute_run_task, new_run.id, workflow_id, json.loads(new_run.input_json))
     
-    return success_response(request, ResponseMessage.RUN_QUEUED, {"run_id": run_id, "workflow_id": workflow_id, "status": RunStatus.QUEUED.value})
+    return success_response(request, ResponseMessage.RUN_QUEUED, {"run_id": new_run.id, "workflow_id": workflow_id, "status": new_run.status})
 
 @router.get("/{workflow_id}")
 def get_workflow(workflow_id: str, request: Request, db: Session = Depends(get_db)):

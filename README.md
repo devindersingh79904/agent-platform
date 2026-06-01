@@ -126,9 +126,16 @@ cp .env.example .env
 - `SCHEDULER_ENABLED`: Set to true to start the APScheduler worker inside the backend. Default false.
 - `OPENAI_MODEL`: OpenAI model used for real LLM mode, default `gpt-4o-mini`.
 - `TELEGRAM_BOT_TOKEN`: Token from BotFather for Telegram integration.
-- `DEFAULT_TELEGRAM_WORKFLOW_ID`: Workflow ID from a created workflow URL used by the Telegram bot.
 - `DATABASE_URL`: Database connection string. Use `sqlite:///./data/ai_agent_studio.db` for local testing, or `postgresql+psycopg2://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>` for production. Both backend and telegram worker must use the exact same DATABASE_URL.
 - `VITE_API_BASE_URL`: Frontend API base URL.
+
+**Example Telegram Configuration in `.env`:**
+```env
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=8644588658:AAG5r8Jx2_XTGmChfISDICkv6p7l_HVzB1o
+DEFAULT_TELEGRAM_WORKFLOW_ID=your-workflow-uuid
+DATABASE_URL=sqlite:///./data/ai_agent_studio.db
+```
 - `VITE_WS_BASE_URL`: Frontend WebSocket base URL.
 - `SEARCH_PROVIDER=duckduckgo`: Use DuckDuckGo for real web search tool execution.
 - `DUCKDUCKGO_MAX_RESULTS=5`: Maximum number of DuckDuckGo search results returned by the tool.

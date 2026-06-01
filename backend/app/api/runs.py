@@ -32,21 +32,17 @@ def execute_run_task(run_id: str, workflow_id: str, input_json: dict):
 def create_workflow_run(workflow_id: str, run: WorkflowRunCreate, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Immediately trigger run in background
     import json
-    from app.runtime.engine import normalize_run_input
+    from app.services.workflow_run_service import WorkflowRunService
+    from fastapi import HTTPException
     
     raw_input = json.loads(run.input_json) if isinstance(run.input_json, str) else run.input_json
-    input_data = normalize_run_input(raw_input)
     
-    # We must create the initial DB record so we can return its ID immediately
-    from datetime import datetime
-    import uuid
-    run_id = str(uuid.uuid4())
-    new_run = WorkflowRun(id=run_id, workflow_id=workflow_id, input_json=json.dumps(input_data), status=RunStatus.QUEUED.value, started_at=datetime.utcnow())
-    db.add(new_run)
-    db.commit()
-    db.refresh(new_run)
+    try:
+        new_run = WorkflowRunService.create_run(db, workflow_id, raw_input, trigger_source="api", commit=True)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    background_tasks.add_task(execute_run_task, run_id, workflow_id, input_data)
+    background_tasks.add_task(execute_run_task, new_run.id, workflow_id, json.loads(new_run.input_json))
     
     return success_response(request, ResponseMessage.RUN_QUEUED, new_run)
 
